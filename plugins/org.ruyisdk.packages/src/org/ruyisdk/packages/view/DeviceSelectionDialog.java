@@ -152,10 +152,6 @@ public class DeviceSelectionDialog extends Dialog {
                     case 1:
                         result = d1.getEntityId().compareToIgnoreCase(d2.getEntityId());
                         break;
-                    case 2:
-                        result = Integer.compare(d1.getRelatedRefs().size(),
-                                d2.getRelatedRefs().size());
-                        break;
                     default:
                         result = d1.getLabel().compareToIgnoreCase(d2.getLabel());
                         break;
@@ -169,6 +165,10 @@ public class DeviceSelectionDialog extends Dialog {
         for (int i = 0; i < columns.length; i++) {
             final var colIdx = i;
             columns[i].addListener(SWT.Selection, e -> {
+                if (colIdx == 2) {
+                    // sorting "variants" column makes no sense, so ignore clicks
+                    return;
+                }
                 if (sortColumnIndex == colIdx) {
                     sortDirection = (sortDirection == SWT.UP) ? SWT.DOWN : SWT.UP;
                 } else {
