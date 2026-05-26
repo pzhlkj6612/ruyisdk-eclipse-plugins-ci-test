@@ -1,6 +1,7 @@
 package org.ruyisdk.ruyi.jobs;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.ruyisdk.core.exception.PluginException;
 import org.ruyisdk.core.ruyi.model.CheckResult;
 import org.ruyisdk.core.ruyi.model.RuyiVersion;
 import org.ruyisdk.core.ruyi.model.SystemInfo;
@@ -56,9 +57,14 @@ public class CheckRuyiJob {
         if (installDir == null || installDir.isBlank()) {
             return null;
         }
-        final var version = RuyiCliVersionSupport.getInstalledVersion(installDir);
-        LOGGER.logInfo("Installed Ruyi version: " + version);
-        return version;
+        try {
+            final var version = RuyiCliVersionSupport.getInstalledVersion(installDir);
+            LOGGER.logInfo("Installed Ruyi version: " + version);
+            return version;
+        } catch (PluginException e) {
+            LOGGER.logError("Failed to get installed Ruyi version", e);
+            return null;
+        }
     }
 
     private RuyiVersion getLatestRelease() {
