@@ -17,13 +17,15 @@ import org.ruyisdk.ruyi.util.RuyiFileUtils;
 public class CheckRuyiJob {
     private static final PluginLogger LOGGER = Activator.getLogger();
 
+    private CheckRuyiJob() {}
+
     /**
      * Runs Ruyi environment check.
      *
      * @param monitor progress monitor
      * @return check result
      */
-    public CheckResult runCheck(IProgressMonitor monitor) {
+    public static CheckResult runCheck(IProgressMonitor monitor) {
         monitor.beginTask("Checking Ruyi environment", 2);
 
         try {
@@ -52,7 +54,7 @@ public class CheckRuyiJob {
         }
     }
 
-    private RuyiVersion getInstalledVersion() {
+    private static RuyiVersion getInstalledVersion() {
         final var installDir = RuyiFileUtils.findInstallPathWithRuyi();
         if (installDir == null || installDir.isBlank()) {
             return null;
@@ -67,7 +69,7 @@ public class CheckRuyiJob {
         }
     }
 
-    private RuyiVersion getLatestRelease() {
+    private static RuyiVersion getLatestRelease() {
         final var archSuffix = SystemInfo.detectArchitecture().getSuffix();
         final var info = RuyiApi.getLatestRelease(archSuffix);
         final var latest = info.getVersion();

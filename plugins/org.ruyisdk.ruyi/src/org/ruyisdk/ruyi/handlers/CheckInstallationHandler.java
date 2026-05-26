@@ -14,14 +14,11 @@ import org.ruyisdk.ruyi.core.RuyiCore;
 public class CheckInstallationHandler extends AbstractHandler {
     private static final PluginLogger LOGGER = Activator.getLogger();
 
-    private RuyiCore ruyiCore; // 核心服务
-
     @Override
     public Object execute(ExecutionEvent event) throws ExecutionException {
         try {
             LOGGER.logInfo("Manual installation check triggered");
-            ruyiCore = new RuyiCore();
-            ruyiCore.runManualCheck();
+            RuyiCore.runManualCheck();
             LOGGER.logInfo("Ruyi activated successfully");
             return null;
         } catch (PluginException e) {
