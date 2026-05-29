@@ -181,13 +181,11 @@ public final class RuyiInstallManager {
                 lastException = e;
                 listener.logMessage(String.format("%s下载失败: %s", sourceName, e.getMessage()));
 
-                if (i < downloadSources.length - 1) {
-                    try {
-                        Files.deleteIfExists(tempPath);
-                        listener.logMessage("已清理失败下载的部分文件");
-                    } catch (IOException ioEx) {
-                        listener.logMessage("清理部分文件失败: " + ioEx.getMessage());
-                    }
+                try {
+                    Files.deleteIfExists(tempPath);
+                    listener.logMessage("已清理失败下载的部分文件");
+                } catch (IOException ioEx) {
+                    listener.logMessage("清理部分文件失败: " + ioEx.getMessage());
                 }
             }
         }
