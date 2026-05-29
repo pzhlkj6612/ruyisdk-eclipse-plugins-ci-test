@@ -8,6 +8,7 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.Objects;
@@ -116,7 +117,16 @@ public final class RuyiInstallManager {
             InstallationListener listener) {
         String archSuffix = SystemInfo.detectArchitecture().getSuffix();
         RuyiReleaseInfo latestRelease = RuyiApi.getLatestRelease(archSuffix);
-        Path ruyiExecutablePath = Paths.get(destinationDirectory, "ruyi");
+
+        // Overwrite possible existing files, including symlinks. See "Files.move" on below.
+        // Explain: if the file is a symlink, it may point to another installation, so we should not
+        // bother to change the targetted file.
+        final Path tempPath;
+        try {
+            tempPath = Files.createTempFile("ruyi-download-", null);
+        } catch (IOException e) {
+            throw RuyiInstallException.filesystemError("Failed to create temp file", e);
+        }
 
         String[] downloadSources = {latestRelease.getMirrorUrl(), latestRelease.getGithubUrl()};
         Exception lastException = null;
@@ -128,14 +138,14 @@ public final class RuyiInstallManager {
         for (int i = 0; i < downloadSources.length; i++) {
             String sourceName = i == 0 ? "镜像源" : "GitHub源";
             String ruyiDownloadUrl = downloadSources[i];
-            LOGGER.logInfo(String.format("Downloading Ruyi from: %s to: %s", ruyiDownloadUrl,
-                    ruyiExecutablePath));
+            LOGGER.logInfo(
+                    String.format("Downloading Ruyi from: %s to: %s", ruyiDownloadUrl, tempPath));
 
             try {
                 listener.logMessage(String.format("尝试从%s下载: %s", sourceName, ruyiDownloadUrl));
 
-                RuyiNetworkUtils.downloadFile(ruyiDownloadUrl, ruyiExecutablePath.toString(),
-                        monitor, (transferred, total) -> {
+                RuyiNetworkUtils.downloadFile(ruyiDownloadUrl, tempPath.toString(), monitor,
+                        (transferred, total) -> {
                             if (total <= 0) {
                                 return;
                             }
@@ -157,18 +167,25 @@ public final class RuyiInstallManager {
                 }
 
                 listener.logMessage("下载成功");
+
+                final var ruyiExecutablePath = Paths.get(destinationDirectory, "ruyi");
+
+                try {
+                    Files.move(tempPath, ruyiExecutablePath, StandardCopyOption.REPLACE_EXISTING);
+                } catch (IOException e) {
+                    throw RuyiInstallException.filesystemError("Failed to move downloaded file", e);
+                }
+
                 return ruyiExecutablePath;
             } catch (PluginException e) {
                 lastException = e;
                 listener.logMessage(String.format("%s下载失败: %s", sourceName, e.getMessage()));
 
-                if (i < downloadSources.length - 1) {
-                    try {
-                        Files.deleteIfExists(ruyiExecutablePath);
-                        listener.logMessage("已清理失败下载的部分文件");
-                    } catch (IOException ioEx) {
-                        listener.logMessage("清理部分文件失败: " + ioEx.getMessage());
-                    }
+                try {
+                    Files.deleteIfExists(tempPath);
+                    listener.logMessage("已清理失败下载的部分文件");
+                } catch (IOException ioEx) {
+                    listener.logMessage("清理部分文件失败: " + ioEx.getMessage());
                 }
             }
         }

@@ -43,7 +43,7 @@ public class CheckRuyiJob {
 
             if (latest != null) {
                 if (!RuyiCliVersionSupport.isSupportedVersion(current)
-                        && current.compareTo(latest) < 0) {
+                        || current.compareTo(latest) < 0) {
                     return CheckResult.needUpgrade(current, latest);
                 }
             }
