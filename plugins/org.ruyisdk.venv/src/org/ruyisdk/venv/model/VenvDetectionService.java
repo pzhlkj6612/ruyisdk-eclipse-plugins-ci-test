@@ -132,12 +132,14 @@ public class VenvDetectionService {
 
     /** Creates a new venv via the Ruyi CLI. */
     public void createVenv(String path, String toolchainName, String toolchainVersion,
-            String profile, String emulatorName, String emulatorVersion) {
+            String profile, Boolean withSysroot, String sysrootFrom, String emulatorName,
+            String emulatorVersion) {
         LOGGER.logInfo(String.format(
-                "Creating venv: path=%s, profile=%s, toolchain=%s:%s, emulator=%s:%s", path,
-                profile, toolchainName, toolchainVersion, emulatorName, emulatorVersion));
-        RuyiCli.createVenv(path, toolchainName, toolchainVersion, profile, emulatorName,
-                emulatorVersion);
+                "Creating venv: path=%s, profile=%s, toolchain=%s:%s, withSysroot=%s, sysrootFrom=%s, emulator=%s:%s",
+                path, profile, toolchainName, toolchainVersion, withSysroot, sysrootFrom,
+                emulatorName, emulatorVersion));
+        RuyiCli.createVenv(path, toolchainName, toolchainVersion, profile, withSysroot, sysrootFrom,
+                emulatorName, emulatorVersion);
         refreshWorkspaceProjects(null);
         notifyVenvInventoryChanged();
         LOGGER.logInfo("Venv creation finished: path=" + path);

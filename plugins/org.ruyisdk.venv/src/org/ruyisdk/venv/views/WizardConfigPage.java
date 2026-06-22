@@ -24,6 +24,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.ruyisdk.ruyi.services.PackageIndexUpdater;
@@ -58,6 +59,7 @@ public class WizardConfigPage extends WizardPage {
     private Button sysrootDefaultRadio;
     private Button sysrootNoneRadio;
     private Button sysrootForeignRadio;
+    private Link sysrootPackageLink;
 
     WizardConfigPage(VenvWizardViewModel viewModel) {
         super("configurationPage");
@@ -167,7 +169,8 @@ public class WizardConfigPage extends WizardPage {
         sysrootGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         sysrootGroup.setText("");
         {
-            final var gridLayout = new GridLayout(3, false);
+            // columns: radio buttons, a package info link.
+            final var gridLayout = new GridLayout(2, false);
             gridLayout.marginWidth = 0;
             sysrootGroup.setLayout(gridLayout);
         }
@@ -368,12 +371,35 @@ public class WizardConfigPage extends WizardPage {
         // sysroot
         {
             sysrootDefaultRadio = new Button(sysrootGroup, SWT.RADIO);
-            sysrootDefaultRadio.setText("With sysroot");
+            sysrootDefaultRadio.setText("Using included sysroot");
+            {
+                final var gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+                gridData.horizontalSpan = 2;
+                sysrootDefaultRadio.setLayoutData(gridData);
+            }
+
             sysrootNoneRadio = new Button(sysrootGroup, SWT.RADIO);
-            sysrootNoneRadio.setText("Without sysroot");
+            sysrootNoneRadio.setText("None sysroot (only for advanced users)");
+            {
+                final var gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+                gridData.horizontalSpan = 2;
+                sysrootNoneRadio.setLayoutData(gridData);
+            }
+
             sysrootForeignRadio = new Button(sysrootGroup, SWT.RADIO);
-            sysrootForeignRadio.setText("Use sysroot from specified package");
-            sysrootForeignRadio.setEnabled(false); // TODO: implement this option later
+            sysrootForeignRadio.setText("Use sysroot from specified package:");
+            sysrootForeignRadio.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+            sysrootPackageLink = new Link(sysrootGroup, SWT.NONE);
+            sysrootPackageLink.setText("<a>(select package)</a>");
+            sysrootPackageLink.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
+            sysrootPackageLink.setEnabled(false);
+            sysrootPackageLink.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    openSysrootPackageDialog();
+                }
+            });
         }
     }
 
@@ -611,15 +637,37 @@ public class WizardConfigPage extends WizardPage {
         {
             final var sysrootSelection =
                     new SelectObservableValue<VenvWizardViewModel.SysrootOption>();
-            sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.DEFAULT_SYSROOT,
-                    WidgetProperties.buttonSelection().observe(sysrootDefaultRadio));
-            sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.NONE_SYSROOT,
-                    WidgetProperties.buttonSelection().observe(sysrootNoneRadio));
-            sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.FOREIGN_TOOLCHAIN,
-                    WidgetProperties.buttonSelection().observe(sysrootForeignRadio));
+            {
+                sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.DEFAULT_SYSROOT,
+                        WidgetProperties.buttonSelection().observe(sysrootDefaultRadio));
+                sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.NONE_SYSROOT,
+                        WidgetProperties.buttonSelection().observe(sysrootNoneRadio));
+                sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.FOREIGN_TOOLCHAIN,
+                        WidgetProperties.buttonSelection().observe(sysrootForeignRadio));
+            }
+            final var sysrootOptionObservable = BeanProperties.value(VenvWizardViewModel.class,
+                    "sysrootOption", VenvWizardViewModel.SysrootOption.class).observe(viewModel);
+            final var displayTextObservable = BeanProperties
+                    .value(VenvWizardViewModel.class, "sysrootPackageDisplayText", String.class)
+                    .observe(viewModel);
 
-            dbc.bindValue(sysrootSelection, BeanProperties.value(VenvWizardViewModel.class,
-                    "sysrootOption", VenvWizardViewModel.SysrootOption.class).observe(viewModel));
+            dbc.bindValue(sysrootSelection, sysrootOptionObservable);
+
+            sysrootOptionObservable.addValueChangeListener(e -> {
+                final var fromPkg = viewModel
+                        .getSysrootOption() == VenvWizardViewModel.SysrootOption.FOREIGN_TOOLCHAIN;
+                sysrootPackageLink.setEnabled(fromPkg);
+            });
+
+            displayTextObservable.addValueChangeListener(e -> {
+                final var text = viewModel.getSysrootPackageDisplayText();
+                if (text == null || text.isEmpty()) {
+                    sysrootPackageLink.setText("<a>(select package)</a>");
+                } else {
+                    sysrootPackageLink.setText("<a>" + text + "</a>");
+                }
+                sysrootGroup.requestLayout();
+            });
         }
 
         final var completeObservable = BeanProperties
@@ -633,6 +681,11 @@ public class WizardConfigPage extends WizardPage {
         if (getWizard() != null && getWizard().getContainer() != null) {
             getWizard().getContainer().updateButtons();
         }
+    }
+
+    private void openSysrootPackageDialog() {
+        final var dialog = new SysrootPackageSelectionDialog(getShell(), viewModel);
+        dialog.open();
     }
 
     private void performUpdateAndRefresh() {

@@ -605,7 +605,7 @@ public class RuyiCliRequest {
         private String name;
         private String toolchain;
         private String emulator;
-        private boolean withSysroot = true;
+        private Boolean withSysroot = null;
         private String sysrootFrom;
         private String extraCommandsFrom;
 
@@ -645,7 +645,7 @@ public class RuyiCliRequest {
         }
 
         /** Enables or disables inclusion of a sysroot. */
-        public VenvCommandBuilder withSysroot(boolean withSysroot) {
+        public VenvCommandBuilder withSysroot(Boolean withSysroot) {
             this.withSysroot = withSysroot;
             return this;
         }
@@ -677,10 +677,12 @@ public class RuyiCliRequest {
             if (emulator != null && !emulator.isBlank()) {
                 parent.args("--emulator", emulator);
             }
-            if (withSysroot) {
-                parent.args("--with-sysroot");
-            } else {
-                parent.args("--without-sysroot");
+            if (withSysroot != null) {
+                if (withSysroot.booleanValue()) {
+                    parent.args("--with-sysroot");
+                } else {
+                    parent.args("--without-sysroot");
+                }
             }
             if (sysrootFrom != null && !sysrootFrom.isBlank()) {
                 parent.args("--sysroot-from", sysrootFrom);

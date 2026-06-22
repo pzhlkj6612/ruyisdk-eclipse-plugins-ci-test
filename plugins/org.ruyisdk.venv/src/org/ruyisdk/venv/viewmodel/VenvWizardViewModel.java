@@ -32,13 +32,18 @@ public class VenvWizardViewModel {
     private final List<Toolchain> allToolchains = new ArrayList<>();
     private int selectedToolchainIndex = -1;
     private int selectedToolchainVersionIndex = -1;
+
     private final List<Emulator> emulators = new ArrayList<>();
     private final List<Emulator> allEmulators = new ArrayList<>();
     private int selectedEmulatorIndex = -1;
     private int selectedEmulatorVersionIndex = -1;
-
     private boolean emulatorEnabled = false;
+
     private SysrootOption sysrootOption = SysrootOption.DEFAULT_SYSROOT;
+    private int selectedSysrootPackageIndex = -1;
+    private int selectedSysrootPackageVersionIndex = -1;
+    private String sysrootPackageDisplayText = "";
+
     private String venvLocation = "";
     private boolean venvLocationReadOnly = false;
     private String venvName = "";
@@ -47,7 +52,12 @@ public class VenvWizardViewModel {
 
     /** Available sysroot selection strategies. */
     public enum SysrootOption {
-        NONE_SYSROOT, DEFAULT_SYSROOT, FOREIGN_TOOLCHAIN
+        /** Do not include a sysroot. */
+        NONE_SYSROOT,
+        /** Use the sysroot included with the selected toolchain. */
+        DEFAULT_SYSROOT,
+        /** Use the sysroot from another installed package. */
+        FOREIGN_TOOLCHAIN
     }
 
     /** Creates a new view model instance. */
@@ -88,6 +98,12 @@ public class VenvWizardViewModel {
             return false;
         }
 
+        if (sysrootOption == SysrootOption.FOREIGN_TOOLCHAIN) {
+            if (!isSysrootPackageSelected()) {
+                return false;
+            }
+        }
+
         if (!emulatorEnabled) {
             return true;
         }
@@ -106,6 +122,16 @@ public class VenvWizardViewModel {
         }
 
         return true;
+    }
+
+    private boolean isSysrootPackageSelected() {
+        if (!(selectedSysrootPackageIndex >= 0
+                && selectedSysrootPackageIndex < toolchains.size())) {
+            return false;
+        }
+        final var versions = toolchains.get(selectedSysrootPackageIndex).getVersions();
+        return versions != null && selectedSysrootPackageVersionIndex >= 0
+                && selectedSysrootPackageVersionIndex < versions.size();
     }
 
     private String buildSummaryText() {
@@ -147,7 +173,14 @@ public class VenvWizardViewModel {
         }
         sb.append('\n');
 
-        sb.append("Sysroot: ").append(sysrootOption.toString());
+        sb.append("Sysroot: ");
+        if (sysrootOption == SysrootOption.FOREIGN_TOOLCHAIN && isSysrootPackageSelected()) {
+            final var pkg = toolchains.get(selectedSysrootPackageIndex);
+            final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
+            sb.append(String.format("copy from %s(%s)", pkg.getName(), ver));
+        } else {
+            sb.append(sysrootOption.toString());
+        }
         return sb.toString();
     }
 
@@ -212,6 +245,7 @@ public class VenvWizardViewModel {
 
         // Reset selections since the lists changed
         setSelectedToolchainIndex(-1);
+        setSelectedSysrootPackageIndex(-1);
         setSelectedEmulatorIndex(-1);
     }
 
@@ -268,10 +302,30 @@ public class VenvWizardViewModel {
         installEmulator(name, version);
     }
 
+    private void installPackageForSysroot(String name, String version) {
+        service.installPackage(name, version);
+    }
+
+    /** Installs the currently-selected sysroot package when enabled. */
+    public void installPackageForSysroot() {
+        if (sysrootOption != SysrootOption.FOREIGN_TOOLCHAIN) {
+            throw RuyiCliException.invalidArgument("No need to install package for sysroot");
+        }
+        if (selectedSysrootPackageIndex < 0 || selectedSysrootPackageIndex >= toolchains.size()
+                || selectedSysrootPackageVersionIndex < 0) {
+            throw RuyiCliException.invalidArgument("Sysroot enabled but not selected");
+        }
+        final var name = toolchains.get(selectedSysrootPackageIndex).getName();
+        final var version = toolchains.get(selectedSysrootPackageIndex).getVersions()
+                .get(selectedSysrootPackageVersionIndex);
+        installPackageForSysroot(name, version);
+    }
+
     private void createVenv(String path, String toolchainName, String toolchainVersion,
-            String profile, String emulatorName, String emulatorVersion) {
-        service.createVenv(path, toolchainName, toolchainVersion, profile, emulatorName,
-                emulatorVersion);
+            String profile, Boolean withSysroot, String sysrootFrom, String emulatorName,
+            String emulatorVersion) {
+        service.createVenv(path, toolchainName, toolchainVersion, profile, withSysroot, sysrootFrom,
+                emulatorName, emulatorVersion);
     }
 
     /** Creates a virtual environment using the current wizard selections. */
@@ -298,6 +352,22 @@ public class VenvWizardViewModel {
             profile = profiles.get(selectedProfileIndex).getName();
         }
 
+        Boolean withSysroot = null;
+        String sysrootFromAtom = null;
+        if (this.sysrootOption == SysrootOption.DEFAULT_SYSROOT) {
+            withSysroot = true;
+        } else if (this.sysrootOption == SysrootOption.NONE_SYSROOT) {
+            withSysroot = false;
+        } else if (this.sysrootOption == SysrootOption.FOREIGN_TOOLCHAIN) {
+            if (!isSysrootPackageSelected()) {
+                throw RuyiCliException
+                        .invalidArgument("Sysroot from package selected but no package chosen");
+            }
+            final var pkg = toolchains.get(selectedSysrootPackageIndex);
+            final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
+            sysrootFromAtom = String.format("%s(%s)", pkg.getName(), ver);
+        }
+
         String emulatorName = null;
         String emulatorVersion = null;
         if (emulatorEnabled) {
@@ -312,7 +382,8 @@ public class VenvWizardViewModel {
 
         final var target = new File(parent, name);
         final var path = target.getPath();
-        createVenv(path, toolchainName, toolchainVersion, profile, emulatorName, emulatorVersion);
+        createVenv(path, toolchainName, toolchainVersion, profile, withSysroot, sysrootFromAtom,
+                emulatorName, emulatorVersion);
     }
 
     /** Returns available profiles. */
@@ -431,7 +502,61 @@ public class VenvWizardViewModel {
         final var old = this.sysrootOption;
         this.sysrootOption = option;
         pcs.firePropertyChange("sysrootOption", old, this.sysrootOption);
+        if (option != SysrootOption.FOREIGN_TOOLCHAIN) {
+            setSelectedSysrootPackageIndex(-1);
+            setSelectedSysrootPackageVersionIndex(-1);
+        }
         recomputeDerivedState();
+    }
+
+    /** Returns the selected sysroot package index within the toolchains list. */
+    public int getSelectedSysrootPackageIndex() {
+        return selectedSysrootPackageIndex;
+    }
+
+    /** Sets the selected sysroot package index within the toolchains list. */
+    public void setSelectedSysrootPackageIndex(int index) {
+        final var old = this.selectedSysrootPackageIndex;
+        this.selectedSysrootPackageIndex = index;
+        pcs.firePropertyChange("selectedSysrootPackageIndex", old,
+                this.selectedSysrootPackageIndex);
+        if (old != index) {
+            setSelectedSysrootPackageVersionIndex(-1);
+        }
+        updateSysrootPackageDisplayText();
+        recomputeDerivedState();
+    }
+
+    /** Returns the selected sysroot package version index. */
+    public int getSelectedSysrootPackageVersionIndex() {
+        return selectedSysrootPackageVersionIndex;
+    }
+
+    /** Sets the selected sysroot package version index. */
+    public void setSelectedSysrootPackageVersionIndex(int index) {
+        final var old = this.selectedSysrootPackageVersionIndex;
+        this.selectedSysrootPackageVersionIndex = index;
+        pcs.firePropertyChange("selectedSysrootPackageVersionIndex", old,
+                this.selectedSysrootPackageVersionIndex);
+        updateSysrootPackageDisplayText();
+        recomputeDerivedState();
+    }
+
+    /** Returns the display text describing the selected sysroot package. */
+    public String getSysrootPackageDisplayText() {
+        return sysrootPackageDisplayText;
+    }
+
+    private void updateSysrootPackageDisplayText() {
+        final var old = this.sysrootPackageDisplayText;
+        if (isSysrootPackageSelected()) {
+            final var pkg = toolchains.get(selectedSysrootPackageIndex);
+            final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
+            this.sysrootPackageDisplayText = String.format("%s(%s)", pkg.getName(), ver);
+        } else {
+            this.sysrootPackageDisplayText = "";
+        }
+        pcs.firePropertyChange("sysrootPackageDisplayText", old, this.sysrootPackageDisplayText);
     }
 
     /** Returns the configured venv parent directory. */

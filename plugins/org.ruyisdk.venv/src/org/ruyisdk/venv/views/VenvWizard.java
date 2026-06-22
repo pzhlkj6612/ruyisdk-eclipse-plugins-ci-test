@@ -52,6 +52,12 @@ public class VenvWizard extends Wizard {
                     monitor.subTask("install toolchain");
                     viewModel.installToolchain();
 
+                    if (viewModel
+                            .getSysrootOption() == VenvWizardViewModel.SysrootOption.FOREIGN_TOOLCHAIN) {
+                        monitor.subTask("install package for sysroot");
+                        viewModel.installPackageForSysroot();
+                    }
+
                     if (viewModel.isEmulatorEnabled()) {
                         monitor.subTask("install emulator");
                         viewModel.installEmulator();
