@@ -33,7 +33,7 @@ public class PromotionStartup implements IStartup {
                     try {
                         page.showView(WebsiteView.ID);
                     } catch (PartInitException e) {
-                        LOGGER.logInfo("Failed to open RuyiSDK Website View", e);
+                        LOGGER.logError("Failed to open RuyiSDK Website View", e);
                     }
                 }
             }
