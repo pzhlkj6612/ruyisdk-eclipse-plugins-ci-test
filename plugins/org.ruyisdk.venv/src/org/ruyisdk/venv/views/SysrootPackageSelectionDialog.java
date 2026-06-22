@@ -27,8 +27,7 @@ import org.ruyisdk.venv.viewmodel.VenvWizardViewModel;
  *
  * <p>
  * Displays a name list and a version list side-by-side, identical to the toolchain selection tables
- * on the wizard configuration page. The OK button is only enabled once both a package and a version
- * are selected.
+ * on the wizard configuration page.
  */
 class SysrootPackageSelectionDialog extends Dialog {
 
