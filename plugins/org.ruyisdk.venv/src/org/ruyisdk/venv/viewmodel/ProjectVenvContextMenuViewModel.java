@@ -66,8 +66,9 @@ public class ProjectVenvContextMenuViewModel {
      * @return display text
      */
     public static String toApplyVenvDisplayText(Venv venv) {
-        return String.format("%s | profile=%s | toolchain=%s",
+        return String.format("%s | profile=%s | toolchain=%s | qemu=%s",
                 VenvListViewModel.getDisplayPath(venv), venv.getProfile(),
-                venv.getToolchainPrefix());
+                venv.getToolchainPrefix(),
+                venv.getEmulatorExecutableName().isEmpty() ? "No" : "Yes");
     }
 }

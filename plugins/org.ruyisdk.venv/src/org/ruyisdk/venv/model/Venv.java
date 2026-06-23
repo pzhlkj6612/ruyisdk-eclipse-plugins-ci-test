@@ -17,6 +17,8 @@ public class Venv {
     private List<String> quirks;
     private String toolchainPath;
     private String toolchainPrefix;
+    private String emulatorDirPath;
+    private String emulatorExecutableName;
 
     private Venv(String path, String profile, String sysroot, String projectPath,
             List<String> quirks) {
@@ -27,6 +29,8 @@ public class Venv {
         this.quirks = quirks == null ? new ArrayList<>() : new ArrayList<>(quirks);
         this.toolchainPath = "";
         this.toolchainPrefix = "";
+        this.emulatorDirPath = "";
+        this.emulatorExecutableName = "";
     }
 
     /** Creates a venv model for a standalone venv with quirks. */
@@ -123,5 +127,28 @@ public class Venv {
     public void setToolchainPrefix(String toolchainPrefix) {
         pcs.firePropertyChange("toolchainPrefix", this.toolchainPrefix,
                 this.toolchainPrefix = toolchainPrefix == null ? "" : toolchainPrefix);
+    }
+
+    /** Returns the emulator bin directory path (derived from venv). */
+    public String getEmulatorDirPath() {
+        return emulatorDirPath;
+    }
+
+    /** Updates the emulator bin directory path. */
+    public void setEmulatorDirPath(String emulatorDirPath) {
+        pcs.firePropertyChange("emulatorDirPath", this.emulatorDirPath,
+                this.emulatorDirPath = emulatorDirPath == null ? "" : emulatorDirPath);
+    }
+
+    /** Returns the emulator executable (e.g., "qemu-user-riscv-xthead"). */
+    public String getEmulatorExecutableName() {
+        return emulatorExecutableName;
+    }
+
+    /** Updates the emulator executable. */
+    public void setEmulatorExecutableName(String emulatorExecutableName) {
+        pcs.firePropertyChange("emulatorExecutableName", this.emulatorExecutableName,
+                this.emulatorExecutableName =
+                        emulatorExecutableName == null ? "" : emulatorExecutableName);
     }
 }

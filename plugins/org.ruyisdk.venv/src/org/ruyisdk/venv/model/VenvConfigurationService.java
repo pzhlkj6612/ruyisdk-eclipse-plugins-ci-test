@@ -27,6 +27,9 @@ public class VenvConfigurationService {
     private static final PluginLogger LOGGER = Activator.getLogger();
     private static final String ENV_RUYI_VENV = "RUYI_VENV";
 
+    private final VenvLaunchConfigurationService launchConfigService =
+            new VenvLaunchConfigurationService();
+
     /** Result of applying venv configuration to a project. */
     public static class ApplyResult {
         private final boolean success;
@@ -126,6 +129,18 @@ public class VenvConfigurationService {
             final var toolchainPrefix = venv.getToolchainPrefix();
             if (toolchainPrefix != null && !toolchainPrefix.isEmpty()) {
                 sb.append("\n- Toolchain Prefix: ").append(toolchainPrefix);
+            }
+            final var emulatorExe = venv.getEmulatorExecutableName();
+            if (emulatorExe != null && !emulatorExe.isEmpty()) {
+                final var launchConfig = launchConfigService.addLaunchConfigs(project, venv);
+
+                sb.append("\n- QEMU Directory: ").append(venv.getEmulatorDirPath());
+                sb.append("\n- QEMU Executable: ").append(emulatorExe);
+                sb.append("\n- Run Configuration: ").append(launchConfig.getRunConfigName());
+                if (!launchConfig.getDebugConfigName().isEmpty()) {
+                    sb.append("\n- Debug Configuration: ")
+                            .append(launchConfig.getDebugConfigName());
+                }
             }
 
             LOGGER.logInfo("Venv configuration applied successfully: project=" + project.getName());
