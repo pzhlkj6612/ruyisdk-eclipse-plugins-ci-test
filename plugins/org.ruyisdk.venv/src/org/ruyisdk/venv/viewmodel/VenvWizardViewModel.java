@@ -47,6 +47,8 @@ public class VenvWizardViewModel {
     private String venvLocation = "";
     private boolean venvLocationReadOnly = false;
     private String venvName = "";
+    private boolean venvNameManuallyOverridden = false;
+
     private final IObservableList<String> projectRootPaths =
             new WritableList<>(new ArrayList<>(), String.class);
 
@@ -401,8 +403,33 @@ public class VenvWizardViewModel {
         final var old = this.selectedProfileIndex;
         this.selectedProfileIndex = index;
         pcs.firePropertyChange("selectedProfileIndex", old, this.selectedProfileIndex);
+        applyDefaultVenvNameForSelectedProfile();
         filterPackagesBySelectedProfile();
         recomputeDerivedState();
+    }
+
+    private String buildDefaultVenvNameForSelectedProfile() {
+        if (selectedProfileIndex < 0 || selectedProfileIndex >= profiles.size()) {
+            return "";
+        }
+        final var profile = profiles.get(selectedProfileIndex);
+        if (profile == null || profile.getName() == null || profile.getName().isBlank()) {
+            return "";
+        }
+        // https://github.com/ruyisdk/ruyisdk-vscode-extension/blob/0.1.4/src/venv/create.command.ts#L217-L229
+        // b7b4ab08ea1907db517c27993e857c300fc4a983
+        return "ruyi-venv-" + profile.getName().replaceAll("\\s+", "-");
+    }
+
+    private void applyDefaultVenvNameForSelectedProfile() {
+        if (venvNameManuallyOverridden) {
+            return;
+        }
+        final var defaultName = buildDefaultVenvNameForSelectedProfile();
+        if (defaultName.isBlank()) {
+            return;
+        }
+        setVenvName(defaultName);
     }
 
     /** Returns available toolchains. */
@@ -618,8 +645,15 @@ public class VenvWizardViewModel {
 
     /** Sets the venv directory name. */
     public void setVenvName(String name) {
+        final var normalizedName = name == null ? "" : name;
+        if (!venvNameManuallyOverridden) {
+            final var defaultName = buildDefaultVenvNameForSelectedProfile();
+            if (!normalizedName.equals(defaultName)) {
+                venvNameManuallyOverridden = true;
+            }
+        }
         final var old = this.venvName;
-        this.venvName = name == null ? "" : name;
+        this.venvName = normalizedName;
         pcs.firePropertyChange("venvName", old, this.venvName);
     }
 
