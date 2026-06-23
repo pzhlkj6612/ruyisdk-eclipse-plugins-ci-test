@@ -135,6 +135,11 @@ public class VenvView extends ViewPart {
                 column.getColumn().setText("Toolchain Prefix");
                 tableColumnLayout.setColumnData(column.getColumn(), new ColumnWeightData(30));
             }
+            {
+                final var column = new TableViewerColumn(tableViewer, SWT.LEFT);
+                column.getColumn().setText("QEMU?");
+                tableColumnLayout.setColumnData(column.getColumn(), new ColumnWeightData(15));
+            }
             tableComposite.setLayout(tableColumnLayout);
 
             tableViewer.getTable().setHeaderVisible(true);
@@ -142,9 +147,10 @@ public class VenvView extends ViewPart {
 
             final var contentProvider = new ObservableListContentProvider<Venv>();
             tableViewer.setContentProvider(contentProvider);
-            tableViewer.setLabelProvider(new ObservableMapLabelProvider(Properties.observeEach(
-                    contentProvider.getKnownElements(), BeanProperties.values(Venv.class,
-                            "projectPath", "path", "profile", "toolchainPrefix"))) {
+            tableViewer.setLabelProvider(new ObservableMapLabelProvider(
+                    Properties.observeEach(contentProvider.getKnownElements(),
+                            BeanProperties.values(Venv.class, "projectPath", "path", "profile",
+                                    "toolchainPrefix", "emulatorExecutableName"))) {
                 @Override
                 public String getColumnText(Object element, int columnIndex) {
                     if (!(element instanceof Venv)) {
@@ -166,6 +172,12 @@ public class VenvView extends ViewPart {
                     if (columnIndex == 3) {
                         // Toolchain Prefix
                         return venv.getToolchainPrefix();
+                    }
+                    if (columnIndex == 4) {
+                        // QEMU
+                        final var emulatorExecutable = venv.getEmulatorExecutableName();
+                        return emulatorExecutable != null && !emulatorExecutable.isEmpty() ? "Yes"
+                                : "No";
                     }
                     return super.getColumnText(element, columnIndex);
                 }

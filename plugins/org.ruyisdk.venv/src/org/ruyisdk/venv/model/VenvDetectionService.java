@@ -174,6 +174,15 @@ public class VenvDetectionService {
                     venv.setToolchainPath(toolchainInfo.binPath);
                     venv.setToolchainPrefix(toolchainInfo.prefix);
 
+                    // Check QEMU
+                    final var hasEmulatorConfig = !cfg.emulatorName.isEmpty();
+                    final var binDir = childDir.resolve("bin");
+                    final var ruyiQemu = binDir.resolve("ruyi-qemu");
+                    if (hasEmulatorConfig && Files.isRegularFile(ruyiQemu)) {
+                        venv.setEmulatorDirPath(binDir.toString());
+                        venv.setEmulatorExecutableName(ruyiQemu.getFileName().toString());
+                    }
+
                     out.add(venv);
                 });
             } catch (IOException e) {
@@ -240,10 +249,12 @@ public class VenvDetectionService {
     private static final class DetectedVenvConfig {
         private final String profile;
         private final String sysroot;
+        private final String emulatorName;
 
-        private DetectedVenvConfig(String profile, String sysroot) {
+        private DetectedVenvConfig(String profile, String sysroot, String emulatorName) {
             this.profile = profile == null ? "" : profile;
             this.sysroot = sysroot == null ? "" : sysroot;
+            this.emulatorName = emulatorName == null ? "" : emulatorName;
         }
     }
 
@@ -296,7 +307,9 @@ public class VenvDetectionService {
     private static DetectedVenvConfig parseVenvConfigBestEffort(Path tomlPath) {
         String profile = "";
         String sysroot = "";
+        String emulatorName = "";
         boolean inConfig = false;
+        boolean inEmulator = false;
         try {
             for (final var rawLine : Files.readAllLines(tomlPath, StandardCharsets.UTF_8)) {
                 var line = rawLine == null ? "" : rawLine.trim();
@@ -312,9 +325,11 @@ public class VenvDetectionService {
                 }
                 if (line.startsWith("[") && line.endsWith("]")) {
                     inConfig = "[config]".equals(line);
+                    inEmulator =
+                            line.startsWith("[metadata.packages.emulator.") && line.endsWith("]");
                     continue;
                 }
-                if (!inConfig) {
+                if (!inConfig && !inEmulator) {
                     continue;
                 }
                 final var eq = line.indexOf('=');
@@ -324,17 +339,23 @@ public class VenvDetectionService {
                 final var key = line.substring(0, eq).trim();
                 var val = line.substring(eq + 1).trim();
                 val = unquote(val);
-                if ("profile".equals(key)) {
-                    profile = val;
-                } else if ("sysroot".equals(key)) {
-                    sysroot = val;
+                if (inConfig) {
+                    if ("profile".equals(key)) {
+                        profile = val;
+                    } else if ("sysroot".equals(key)) {
+                        sysroot = val;
+                    }
+                } else if (inEmulator) {
+                    if ("name".equals(key)) {
+                        emulatorName = val;
+                    }
                 }
             }
         } catch (IOException e) {
             // ignore parse failures
             LOGGER.logWarning("Failed to parse venv config: path=" + tomlPath, e);
         }
-        return new DetectedVenvConfig(profile, sysroot);
+        return new DetectedVenvConfig(profile, sysroot, emulatorName);
     }
 
     private static String unquote(String val) {
