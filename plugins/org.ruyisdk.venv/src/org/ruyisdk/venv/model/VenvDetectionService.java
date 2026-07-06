@@ -1,7 +1,6 @@
 package org.ruyisdk.venv.model;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +25,7 @@ import org.ruyisdk.core.exception.RuyiConfigException;
 import org.ruyisdk.core.util.PluginLogger;
 import org.ruyisdk.ruyi.services.RuyiCli;
 import org.ruyisdk.venv.Activator;
+import org.tomlj.Toml;
 
 /** Service facade for listing and managing Ruyi virtual environments. */
 public class VenvDetectionService {
@@ -308,47 +308,34 @@ public class VenvDetectionService {
         String profile = "";
         String sysroot = "";
         String emulatorName = "";
-        boolean inConfig = false;
-        boolean inEmulator = false;
         try {
-            for (final var rawLine : Files.readAllLines(tomlPath, StandardCharsets.UTF_8)) {
-                var line = rawLine == null ? "" : rawLine.trim();
-                if (line.isEmpty()) {
+            final var parsed = Toml.parse(tomlPath);
+            if (parsed.hasErrors()) {
+                LOGGER.logWarning("Failed to parse venv config: path=" + tomlPath + ", errors="
+                        + parsed.errors());
+                return new DetectedVenvConfig("", "", "");
+            }
+
+            final var parsedProfile = parsed.getString("config.profile");
+            if (parsedProfile != null) {
+                profile = parsedProfile;
+            }
+
+            final var parsedSysroot = parsed.getString("config.sysroot");
+            if (parsedSysroot != null) {
+                sysroot = parsedSysroot;
+            }
+
+            final var metadata = parsed.getTableOrEmpty("metadata.packages.emulator");
+            for (final var key : metadata.keySet()) {
+                final var emulatorTable = metadata.getTable(key);
+                if (emulatorTable == null) {
                     continue;
                 }
-                final var commentIdx = line.indexOf('#');
-                if (commentIdx >= 0) {
-                    line = line.substring(0, commentIdx).trim();
-                    if (line.isEmpty()) {
-                        continue;
-                    }
-                }
-                if (line.startsWith("[") && line.endsWith("]")) {
-                    inConfig = "[config]".equals(line);
-                    inEmulator =
-                            line.startsWith("[metadata.packages.emulator.") && line.endsWith("]");
-                    continue;
-                }
-                if (!inConfig && !inEmulator) {
-                    continue;
-                }
-                final var eq = line.indexOf('=');
-                if (eq <= 0) {
-                    continue;
-                }
-                final var key = line.substring(0, eq).trim();
-                var val = line.substring(eq + 1).trim();
-                val = unquote(val);
-                if (inConfig) {
-                    if ("profile".equals(key)) {
-                        profile = val;
-                    } else if ("sysroot".equals(key)) {
-                        sysroot = val;
-                    }
-                } else if (inEmulator) {
-                    if ("name".equals(key)) {
-                        emulatorName = val;
-                    }
+                final var parsedName = emulatorTable.getString("name");
+                if (parsedName != null && !parsedName.isBlank()) {
+                    emulatorName = parsedName;
+                    break;
                 }
             }
         } catch (IOException e) {
@@ -356,21 +343,6 @@ public class VenvDetectionService {
             LOGGER.logWarning("Failed to parse venv config: path=" + tomlPath, e);
         }
         return new DetectedVenvConfig(profile, sysroot, emulatorName);
-    }
-
-    private static String unquote(String val) {
-        if (val == null) {
-            return "";
-        }
-        final var s = val.trim();
-        if (s.length() >= 2) {
-            final var first = s.charAt(0);
-            final var last = s.charAt(s.length() - 1);
-            if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
-                return s.substring(1, s.length() - 1);
-            }
-        }
-        return s;
     }
 
     private static void deleteDirectoryRecursively(Path dir) {

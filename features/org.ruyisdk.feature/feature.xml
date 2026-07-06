@@ -356,6 +356,18 @@ You may add additional accurate notices of copyright ownership.
          version="0.0.0"/>
 
    <plugin
+         id="org.antlr.antlr4-runtime"
+         version="0.0.0"/>
+
+   <plugin
+         id="checker-qual"
+         version="0.0.0"/>
+
+   <plugin
+         id="wrapped.org.tomlj.tomlj"
+         version="0.0.0"/>
+
+   <plugin
          id="org.eclipse.tm.terminal.control"
          version="0.0.0"/>
 
