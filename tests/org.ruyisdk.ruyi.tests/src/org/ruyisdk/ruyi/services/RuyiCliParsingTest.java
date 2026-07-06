@@ -286,6 +286,22 @@ public class RuyiCliParsingTest {
     }
 
     @Test
+    public void parsePackageTreeSkipsBlankRemarksAndHandlesNonStrings() {
+        String sample = """
+                        {"ty":"pkglistoutput-v1","category":"toolchain","name":"tc-remarks","vers":[{"semver":"1.0.0","remarks":["  recommended  ",""," ",null,123]}]}
+                        """;
+
+        var categories = RuyiCli.parsePackageTreeFromString(sample);
+        assertEquals(1, categories.size());
+
+        var toolchainCategory = categories.get(0);
+        assertEquals(1, toolchainCategory.getPackages().size());
+
+        var version = toolchainCategory.getPackages().get(0).getVersions().get(0);
+        assertEquals("1.0.0 [recommended][123]", version.getDisplayName());
+    }
+
+    @Test
     public void parsePackageTreeMergesPackagesUnderSameCategory() {
         String sample = """
                         {"ty":"pkglistoutput-v1","category":"toolchain","name":"tc-a","vers":[{"semver":"1.0.0"}]}

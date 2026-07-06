@@ -124,7 +124,7 @@ public class RuyiCli {
          */
         public PackageVersionInfo(String semver, List<String> remarks, boolean installed) {
             this.semver = semver;
-            this.remarks = remarks;
+            this.remarks = remarks == null ? List.of() : new ArrayList<>(remarks);
             this.installed = installed;
         }
 
@@ -133,7 +133,7 @@ public class RuyiCli {
         }
 
         public List<String> getRemarks() {
-            return remarks;
+            return Collections.unmodifiableList(remarks);
         }
 
         public boolean isInstalled() {

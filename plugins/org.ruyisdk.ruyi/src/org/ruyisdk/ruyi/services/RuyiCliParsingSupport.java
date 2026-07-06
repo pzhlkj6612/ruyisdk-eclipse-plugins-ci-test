@@ -269,9 +269,10 @@ final class RuyiCliParsingSupport {
         if (remarksArray == null || remarksArray.length() == 0) {
             return List.of();
         }
-        final var remarks = IntStream.range(0, remarksArray.length())
-                .mapToObj(remarksArray::getString).collect(Collectors.toList());
-        return remarks;
+
+        return IntStream.range(0, remarksArray.length())
+                .mapToObj(i -> remarksArray.optString(i, "")).filter(remark -> !remark.isBlank())
+                .collect(Collectors.toList());
     }
 
     private static String formatVersionLabel(String semver, List<String> remarks) {
