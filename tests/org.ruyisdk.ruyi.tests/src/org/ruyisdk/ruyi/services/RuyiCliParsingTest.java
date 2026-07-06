@@ -250,6 +250,7 @@ public class RuyiCliParsingTest {
         String sample = """
                         {"ty":"log-v1","message":"skip"}
                         {"ty":"pkglistoutput-v1","category":"toolchain","name":"tc-a","vers":[{"semver":"1.0.0","remarks":["recommended"],"is_installed":true},{"semver":"1.1.0"}]}
+                        {"ty":"pkglistoutput-v1","category":"toolchain","name":"tc-multi-remarks","vers":[{"semver":"2.0.0","remarks":["recommended","stable"],"is_installed":false}]}
                         {"category":"emulator","name":"emu-a","vers":[{"semver":"0.9.0"}]}
                         """;
 
@@ -258,7 +259,7 @@ public class RuyiCliParsingTest {
 
         var toolchainCategory = categories.get(0);
         assertEquals("toolchain", toolchainCategory.getName());
-        assertEquals(1, toolchainCategory.getPackages().size());
+        assertEquals(2, toolchainCategory.getPackages().size());
 
         var toolchainPackage = toolchainCategory.getPackages().get(0);
         assertEquals("tc-a", toolchainPackage.getName());
@@ -272,6 +273,11 @@ public class RuyiCliParsingTest {
         var version110 = toolchainPackage.getVersions().get(1);
         assertEquals("1.1.0", version110.getDisplayName());
         assertFalse(version110.isInstalled());
+
+        var toolchainPackage1 = toolchainCategory.getPackages().get(1);
+        var version200 = toolchainPackage1.getVersions().get(0);
+        assertEquals("2.0.0 [recommended][stable]", version200.getDisplayName());
+        assertFalse(version200.isInstalled());
 
         var emulatorCategory = categories.get(1);
         assertEquals("emulator", emulatorCategory.getName());
