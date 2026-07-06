@@ -298,7 +298,7 @@ public class RuyiCliParsingTest {
         assertEquals(1, toolchainCategory.getPackages().size());
 
         var version = toolchainCategory.getPackages().get(0).getVersions().get(0);
-        assertEquals("1.0.0 [recommended][123]", version.getDisplayName());
+        assertEquals("1.0.0 [  recommended  ][123]", version.getDisplayName());
     }
 
     @Test
