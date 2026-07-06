@@ -26,6 +26,8 @@ Require-Bundle:
  org.eclipse.ui,
  org.ruyisdk.core,
  org.ruyisdk.ruyi
+Import-Package: 
+ org.tomlj
 Export-Package: 
  org.ruyisdk.venv.model,
  org.ruyisdk.venv.viewmodel
