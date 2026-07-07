@@ -87,7 +87,7 @@ class SysrootPackageSelectionDialog extends Dialog {
                 return ((Toolchain) element).getName();
             }
         });
-        packageNamesViewer.setInput(viewModel.getToolchains());
+        packageNamesViewer.setInput(viewModel.getSysrootToolchains());
 
         packageVersionsViewer = new TableViewer(container, SWT.BORDER | SWT.FULL_SELECTION);
         {
@@ -127,7 +127,8 @@ class SysrootPackageSelectionDialog extends Dialog {
                             if (fromObject == null) {
                                 return Integer.valueOf(-1);
                             }
-                            return Integer.valueOf(viewModel.getToolchains().indexOf(fromObject));
+                            return Integer
+                                    .valueOf(viewModel.getSysrootToolchains().indexOf(fromObject));
                         }
                     });
             final var indexToToolchain = new UpdateValueStrategy<Integer, Toolchain>();
@@ -136,8 +137,9 @@ class SysrootPackageSelectionDialog extends Dialog {
                         @Override
                         public Toolchain convert(Integer fromObject) {
                             final var idx = ((Integer) fromObject).intValue();
-                            if (idx >= 0 && idx < viewModel.getToolchains().size()) {
-                                return viewModel.getToolchains().get(idx);
+                            final var toolchains = viewModel.getSysrootToolchains();
+                            if (idx >= 0 && idx < toolchains.size()) {
+                                return toolchains.get(idx);
                             }
                             return null;
                         }
@@ -163,10 +165,11 @@ class SysrootPackageSelectionDialog extends Dialog {
                         @Override
                         public Integer convert(String fromObject) {
                             final var idx = viewModel.getSelectedSysrootPackageIndex();
-                            if (idx < 0 || idx >= viewModel.getToolchains().size()) {
+                            final var toolchains = viewModel.getSysrootToolchains();
+                            if (idx < 0 || idx >= toolchains.size()) {
                                 return Integer.valueOf(-1);
                             }
-                            final var vers = viewModel.getToolchains().get(idx).getVersions();
+                            final var vers = toolchains.get(idx).getVersions();
                             return Integer.valueOf(vers == null ? -1 : vers.indexOf(fromObject));
                         }
                     });
@@ -176,10 +179,11 @@ class SysrootPackageSelectionDialog extends Dialog {
                         @Override
                         public String convert(Integer fromObject) {
                             final var idx = viewModel.getSelectedSysrootPackageIndex();
-                            if (idx < 0 || idx >= viewModel.getToolchains().size()) {
+                            final var toolchains = viewModel.getSysrootToolchains();
+                            if (idx < 0 || idx >= toolchains.size()) {
                                 return null;
                             }
-                            final var vers = viewModel.getToolchains().get(idx).getVersions();
+                            final var vers = toolchains.get(idx).getVersions();
                             final var verIdx = ((Integer) fromObject).intValue();
                             return vers != null && verIdx >= 0 && verIdx < vers.size()
                                     ? vers.get(verIdx)
@@ -202,8 +206,9 @@ class SysrootPackageSelectionDialog extends Dialog {
             return;
         }
         final var selectedPackageIndex = viewModel.getSelectedSysrootPackageIndex();
-        if (selectedPackageIndex >= 0 && selectedPackageIndex < viewModel.getToolchains().size()) {
-            final var toolchain = viewModel.getToolchains().get(selectedPackageIndex);
+        final var toolchains = viewModel.getSysrootToolchains();
+        if (selectedPackageIndex >= 0 && selectedPackageIndex < toolchains.size()) {
+            final var toolchain = toolchains.get(selectedPackageIndex);
             packageVersionsViewer.setInput(toolchain.getVersions());
 
             final var selectedVersionIndex = viewModel.getSelectedSysrootPackageVersionIndex();

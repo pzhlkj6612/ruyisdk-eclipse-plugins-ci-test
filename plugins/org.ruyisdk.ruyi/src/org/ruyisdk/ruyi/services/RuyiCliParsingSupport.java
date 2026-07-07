@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -141,16 +142,17 @@ final class RuyiCliParsingSupport {
     }
 
     static List<RuyiCli.ToolchainInfo> parseToolchainsFromString(String input) {
-        final var packages = parsePackageInfos(input, "toolchain", "toolchain");
+        final var packages = parsePackageInfos(input, "toolchain", "toolchain", true);
         final var out = new ArrayList<RuyiCli.ToolchainInfo>();
         for (final var info : packages) {
-            out.add(new RuyiCli.ToolchainInfo(info.name, info.versions, info.quirks));
+            out.add(new RuyiCli.ToolchainInfo(info.name, info.versions, info.quirks,
+                    info.hasIncludedSysroot));
         }
         return out;
     }
 
     static List<RuyiCli.EmulatorInfo> parseEmulatorsFromString(String input) {
-        final var packages = parsePackageInfos(input, "emulator", "emulator");
+        final var packages = parsePackageInfos(input, "emulator", "emulator", false);
         final var out = new ArrayList<RuyiCli.EmulatorInfo>();
         for (final var info : packages) {
             out.add(new RuyiCli.EmulatorInfo(info.name, info.versions, info.quirks));
@@ -202,7 +204,7 @@ final class RuyiCliParsingSupport {
     }
 
     private static List<PackageInfo> parsePackageInfos(String input, String expectedCategory,
-            String metadataKey) {
+            String metadataKey, boolean detectIncludedSysroot) {
         final var out = new ArrayList<PackageInfo>();
         if (input == null || input.isBlank()) {
             return out;
@@ -233,7 +235,9 @@ final class RuyiCliParsingSupport {
             }
 
             final var quirks = extractPackageQuirks(o.optJSONArray("vers"), metadataKey);
-            out.add(new PackageInfo(name.trim(), versions, quirks));
+            final var hasIncludedSysroot = detectIncludedSysroot
+                    && extractPackageHasIncludedSysroot(o.optJSONArray("vers"), metadataKey);
+            out.add(new PackageInfo(name.trim(), versions, quirks, hasIncludedSysroot));
         }
         return out;
     }
@@ -329,6 +333,20 @@ final class RuyiCliParsingSupport {
 
         return new ArrayList<>(quirksSet);
     }
+
+    private static boolean extractPackageHasIncludedSysroot(JSONArray vers, String metadataKey) {
+        if (vers == null) {
+            return false;
+        }
+
+        return IntStream.range(0, vers.length())
+                .mapToObj(i -> Optional.ofNullable(vers.optJSONObject(i)))
+                .map(optV -> optV.map(v -> v.optJSONObject("pm"))
+                        .map(pm -> pm.optJSONObject(metadataKey))
+                        .map(metadata -> metadata.optString("included_sysroot", "")).orElse(""))
+                .anyMatch(sysroot -> !sysroot.isBlank());
+    }
+
 
     private static void collectJsonArrayStrings(JSONArray arr, LinkedHashSet<String> target) {
         if (arr == null) {
@@ -569,11 +587,14 @@ final class RuyiCliParsingSupport {
         private final String name;
         private final List<String> versions;
         private final List<String> quirks;
+        private final boolean hasIncludedSysroot;
 
-        private PackageInfo(String name, List<String> versions, List<String> quirks) {
+        private PackageInfo(String name, List<String> versions, List<String> quirks,
+                boolean hasIncludedSysroot) {
             this.name = name;
             this.versions = versions;
             this.quirks = quirks;
+            this.hasIncludedSysroot = hasIncludedSysroot;
         }
     }
 }

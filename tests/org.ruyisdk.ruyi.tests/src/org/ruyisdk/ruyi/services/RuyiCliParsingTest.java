@@ -33,9 +33,11 @@ public class RuyiCliParsingTest {
         assertEquals(2, tcs.get(0).getVersions().size());
         assertEquals("1.0.0", tcs.get(0).getVersions().get(0));
         assertEquals("1.1.0", tcs.get(0).getVersions().get(1));
+        assertFalse(tcs.get(0).hasIncludedSysroot());
         assertEquals("tc-b", tcs.get(1).getName());
         assertEquals(1, tcs.get(1).getVersions().size());
         assertEquals("2.0.0", tcs.get(1).getVersions().get(0));
+        assertFalse(tcs.get(1).hasIncludedSysroot());
     }
 
     /**
@@ -246,6 +248,28 @@ public class RuyiCliParsingTest {
     }
 
     @Test
+    public void parseToolchainsDetectsIncludedSysroot() {
+        String sample = """
+                        {"ty":"pkglistoutput-v1","category":"toolchain","name":"tc-sysroot","vers":[{"semver":"1.0.0","pm":{"toolchain":{"included_sysroot":"riscv64-unknown-linux-gnu/sysroot"}}}]}
+                        """;
+
+        List<RuyiCli.ToolchainInfo> tcs = RuyiCli.parseToolchainsFromString(sample);
+        assertEquals(1, tcs.size());
+        assertTrue(tcs.get(0).hasIncludedSysroot());
+    }
+
+    @Test
+    public void parseToolchainsDetectsMissingIncludedSysroot() {
+        String sample = """
+                        {"ty":"pkglistoutput-v1","category":"toolchain","name":"tc-nosysroot","vers":[{"semver":"1.0.0","pm":{"toolchain":{"quirks":["rv64ilp32"]}}}]}
+                        """;
+
+        List<RuyiCli.ToolchainInfo> tcs = RuyiCli.parseToolchainsFromString(sample);
+        assertEquals(1, tcs.size());
+        assertFalse(tcs.get(0).hasIncludedSysroot());
+    }
+
+    @Test
     public void parsePackageTreeBuildsTreeAndPreservesVersionMetadata() {
         String sample = """
                         {"ty":"log-v1","message":"skip"}
@@ -406,7 +430,7 @@ public class RuyiCliParsingTest {
 
     @Test
     public void toolchainInfoQuirksListIsUnmodifiable() {
-        var ti = new RuyiCli.ToolchainInfo("tc", List.of("1.0"), List.of("q"));
+        var ti = new RuyiCli.ToolchainInfo("tc", List.of("1.0"), List.of("q"), false);
         boolean threw = false;
         try {
             ti.getQuirks().add("x");
@@ -418,9 +442,16 @@ public class RuyiCliParsingTest {
 
     @Test
     public void toolchainInfoNullQuirksBecomesEmpty() {
-        var ti = new RuyiCli.ToolchainInfo("tc", List.of("1.0"), null);
+        var ti = new RuyiCli.ToolchainInfo("tc", List.of("1.0"), null, false);
         assertNotNull(ti.getQuirks());
         assertTrue(ti.getQuirks().isEmpty());
+        assertFalse(ti.hasIncludedSysroot());
+    }
+
+    @Test
+    public void toolchainInfoStoresIncludedSysrootCapability() {
+        var ti = new RuyiCli.ToolchainInfo("tc", List.of("1.0"), List.of(), true);
+        assertTrue(ti.hasIncludedSysroot());
     }
 
     @Test
