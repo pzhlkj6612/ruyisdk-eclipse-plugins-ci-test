@@ -607,6 +607,9 @@ public class RuyiCliRequest {
         private String emulator;
         private Boolean withSysroot = null;
         private String sysrootFrom;
+        private String copySysrootFromDir;
+        private String symlinkSysrootFromDir;
+        private String projectSysrootFromRootfs;
         private String extraCommandsFrom;
 
         private VenvCommandBuilder(Builder parent) {
@@ -656,6 +659,24 @@ public class RuyiCliRequest {
             return this;
         }
 
+        /** Sets the directory from which to copy the sysroot. */
+        public VenvCommandBuilder copySysrootFromDir(String copySysrootFromDir) {
+            this.copySysrootFromDir = copySysrootFromDir;
+            return this;
+        }
+
+        /** Sets the directory from which to symlink the sysroot. */
+        public VenvCommandBuilder symlinkSysrootFromDir(String symlinkSysrootFromDir) {
+            this.symlinkSysrootFromDir = symlinkSysrootFromDir;
+            return this;
+        }
+
+        /** Sets the rootfs directory from which to project the sysroot. */
+        public VenvCommandBuilder projectSysrootFromRootfs(String projectSysrootFromRootfs) {
+            this.projectSysrootFromRootfs = projectSysrootFromRootfs;
+            return this;
+        }
+
         /** Sets the package from which to obtain extra commands. */
         public VenvCommandBuilder extraCommandsFrom(String extraCommandsFrom) {
             this.extraCommandsFrom = extraCommandsFrom;
@@ -686,6 +707,15 @@ public class RuyiCliRequest {
             }
             if (sysrootFrom != null && !sysrootFrom.isBlank()) {
                 parent.args("--sysroot-from", sysrootFrom);
+            }
+            if (copySysrootFromDir != null && !copySysrootFromDir.isBlank()) {
+                parent.args("--copy-sysroot-from-dir", copySysrootFromDir);
+            }
+            if (symlinkSysrootFromDir != null && !symlinkSysrootFromDir.isBlank()) {
+                parent.args("--symlink-sysroot-from-dir", symlinkSysrootFromDir);
+            }
+            if (projectSysrootFromRootfs != null && !projectSysrootFromRootfs.isBlank()) {
+                parent.args("--project-sysroot-from-rootfs", projectSysrootFromRootfs);
             }
             if (extraCommandsFrom != null && !extraCommandsFrom.isBlank()) {
                 parent.args("--extra-commands-from", extraCommandsFrom);

@@ -48,6 +48,7 @@ public class VenvWizardViewModel {
     private int selectedSysrootPackageIndex = -1;
     private int selectedSysrootPackageVersionIndex = -1;
     private String sysrootPackageDisplayText = "";
+    private String sysrootDirectoryPath = "";
 
     private String venvLocation = "";
     private boolean venvLocationReadOnly = false;
@@ -64,7 +65,22 @@ public class VenvWizardViewModel {
         /** Use the sysroot included with the selected toolchain. */
         DEFAULT_SYSROOT,
         /** Use the sysroot from another installed package. */
-        FOREIGN_TOOLCHAIN
+        FOREIGN_TOOLCHAIN,
+        /** Copy sysroot from an existing directory. */
+        COPY_FROM_DIRECTORY,
+        /** Symlink sysroot to an existing directory. */
+        SYMLINK_FROM_DIRECTORY,
+        /** Project sysroot from a distro rootfs directory. */
+        PROJECT_FROM_ROOTFS
+    }
+
+    private static boolean usesSysrootDirectory(SysrootOption option) {
+        return switch (option) {
+            case SysrootOption.COPY_FROM_DIRECTORY -> true;
+            case SysrootOption.SYMLINK_FROM_DIRECTORY -> true;
+            case SysrootOption.PROJECT_FROM_ROOTFS -> true;
+            default -> false;
+        };
     }
 
     /** Creates a new view model instance. */
@@ -107,6 +123,10 @@ public class VenvWizardViewModel {
 
         if (sysrootOption == SysrootOption.FOREIGN_TOOLCHAIN) {
             if (!isSysrootPackageSelected()) {
+                return false;
+            }
+        } else if (usesSysrootDirectory(sysrootOption)) {
+            if (sysrootDirectoryPath == null || sysrootDirectoryPath.isBlank()) {
                 return false;
             }
         }
@@ -182,10 +202,22 @@ public class VenvWizardViewModel {
         sb.append('\n');
 
         sb.append("Sysroot: ");
-        if (sysrootOption == SysrootOption.FOREIGN_TOOLCHAIN && isSysrootPackageSelected()) {
-            final var pkg = getSysrootToolchains().get(selectedSysrootPackageIndex);
-            final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
-            sb.append(String.format("copy from %s(%s)", pkg.getName(), ver));
+        if (sysrootOption == SysrootOption.DEFAULT_SYSROOT) {
+            sb.append("using included sysroot");
+        } else if (sysrootOption == SysrootOption.NONE_SYSROOT) {
+            sb.append("none");
+        } else if (sysrootOption == SysrootOption.FOREIGN_TOOLCHAIN) {
+            if (isSysrootPackageSelected()) {
+                final var pkg = getSysrootToolchains().get(selectedSysrootPackageIndex);
+                final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
+                sb.append(String.format("copy from %s(%s)", pkg.getName(), ver));
+            }
+        } else if (sysrootOption == SysrootOption.COPY_FROM_DIRECTORY) {
+            sb.append("copy from directory: ").append(sysrootDirectoryPath);
+        } else if (sysrootOption == SysrootOption.SYMLINK_FROM_DIRECTORY) {
+            sb.append("symlink from directory: ").append(sysrootDirectoryPath);
+        } else if (sysrootOption == SysrootOption.PROJECT_FROM_ROOTFS) {
+            sb.append("project from rootfs: ").append(sysrootDirectoryPath);
         } else {
             sb.append(sysrootOption.toString());
         }
@@ -333,10 +365,12 @@ public class VenvWizardViewModel {
     }
 
     private void createVenv(String path, String toolchainName, String toolchainVersion,
-            String profile, Boolean withSysroot, String sysrootFrom, String emulatorName,
+            String profile, Boolean withSysroot, String sysrootFrom, String copySysrootFromDir,
+            String symlinkSysrootFromDir, String projectSysrootFromRootfs, String emulatorName,
             String emulatorVersion) {
         service.createVenv(path, toolchainName, toolchainVersion, profile, withSysroot, sysrootFrom,
-                emulatorName, emulatorVersion);
+                copySysrootFromDir, symlinkSysrootFromDir, projectSysrootFromRootfs, emulatorName,
+                emulatorVersion);
     }
 
     /** Creates a virtual environment using the current wizard selections. */
@@ -365,6 +399,9 @@ public class VenvWizardViewModel {
 
         Boolean withSysroot = null;
         String sysrootFromAtom = null;
+        String copySysrootFromDir = null;
+        String symlinkSysrootFromDir = null;
+        String projectSysrootFromRootfs = null;
         if (this.sysrootOption == SysrootOption.DEFAULT_SYSROOT) {
             withSysroot = true;
         } else if (this.sysrootOption == SysrootOption.NONE_SYSROOT) {
@@ -377,6 +414,24 @@ public class VenvWizardViewModel {
             final var pkg = getSysrootToolchains().get(selectedSysrootPackageIndex);
             final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
             sysrootFromAtom = String.format("%s(%s)", pkg.getName(), ver);
+        } else if (this.sysrootOption == SysrootOption.COPY_FROM_DIRECTORY) {
+            if (sysrootDirectoryPath == null || sysrootDirectoryPath.isBlank()) {
+                throw RuyiCliException
+                        .invalidArgument("Copy sysroot from directory selected but no path set");
+            }
+            copySysrootFromDir = sysrootDirectoryPath;
+        } else if (this.sysrootOption == SysrootOption.SYMLINK_FROM_DIRECTORY) {
+            if (sysrootDirectoryPath == null || sysrootDirectoryPath.isBlank()) {
+                throw RuyiCliException
+                        .invalidArgument("Symlink sysroot from directory selected but no path set");
+            }
+            symlinkSysrootFromDir = sysrootDirectoryPath;
+        } else if (this.sysrootOption == SysrootOption.PROJECT_FROM_ROOTFS) {
+            if (sysrootDirectoryPath == null || sysrootDirectoryPath.isBlank()) {
+                throw RuyiCliException
+                        .invalidArgument("Project sysroot from rootfs selected but no path set");
+            }
+            projectSysrootFromRootfs = sysrootDirectoryPath;
         }
 
         String emulatorName = null;
@@ -394,7 +449,8 @@ public class VenvWizardViewModel {
         final var target = new File(parent, name);
         final var path = target.getPath();
         createVenv(path, toolchainName, toolchainVersion, profile, withSysroot, sysrootFromAtom,
-                emulatorName, emulatorVersion);
+                copySysrootFromDir, symlinkSysrootFromDir, projectSysrootFromRootfs, emulatorName,
+                emulatorVersion);
     }
 
     /** Returns available profiles. */
@@ -544,6 +600,9 @@ public class VenvWizardViewModel {
             setSelectedSysrootPackageIndex(-1);
             setSelectedSysrootPackageVersionIndex(-1);
         }
+        if (!usesSysrootDirectory(option)) {
+            setSysrootDirectoryPath("");
+        }
         recomputeDerivedState();
     }
 
@@ -587,6 +646,20 @@ public class VenvWizardViewModel {
     /** Returns the display text describing the selected sysroot package. */
     public String getSysrootPackageDisplayText() {
         return sysrootPackageDisplayText;
+    }
+
+    /** Returns the selected sysroot directory path for directory-based options. */
+    public String getSysrootDirectoryPath() {
+        return sysrootDirectoryPath;
+    }
+
+    /** Sets the selected sysroot directory path for directory-based options. */
+    public void setSysrootDirectoryPath(String path) {
+        final var normalized = path == null ? "" : path;
+        final var old = this.sysrootDirectoryPath;
+        this.sysrootDirectoryPath = normalized;
+        pcs.firePropertyChange("sysrootDirectoryPath", old, this.sysrootDirectoryPath);
+        recomputeDerivedState();
     }
 
     private void updateSysrootPackageDisplayText() {

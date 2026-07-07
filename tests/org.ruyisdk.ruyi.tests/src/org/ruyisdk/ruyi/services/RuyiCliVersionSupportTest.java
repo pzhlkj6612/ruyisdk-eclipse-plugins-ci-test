@@ -41,15 +41,10 @@ public class RuyiCliVersionSupportTest {
     }
 
     @Test
-    public void isSupportedVersionAccepts047BugfixRelease() {
-        assertTrue(RuyiCliVersionSupport.isSupportedVersion(new RuyiVersion(0, 47, 9)));
-    }
-
-    @Test
     public void isSupportedVersionAcceptsNewerMinorAndMajor() {
-        assertFalse(RuyiCliVersionSupport.isSupportedVersion(new RuyiVersion(0, 46, 9)));
-        assertTrue(RuyiCliVersionSupport.isSupportedVersion(new RuyiVersion(0, 47, 0)));
-        assertTrue(RuyiCliVersionSupport.isSupportedVersion(new RuyiVersion(0, 48, 0)));
+        assertFalse(RuyiCliVersionSupport.isSupportedVersion(new RuyiVersion(0, 48, 9)));
+        assertTrue(RuyiCliVersionSupport.isSupportedVersion(new RuyiVersion(0, 49, 0)));
+        assertTrue(RuyiCliVersionSupport.isSupportedVersion(new RuyiVersion(0, 50, 0)));
         assertTrue(RuyiCliVersionSupport.isSupportedVersion(new RuyiVersion(1, 0, 0)));
     }
 
@@ -62,7 +57,7 @@ public class RuyiCliVersionSupportTest {
             threw = true;
             Assertions.assertThat(e.getMessage()).isEqualTo(String.format(
                             "Installed ruyi version %s is unsupported. Minimum required version is %s",
-                            new RuyiVersion(0, 46, 3), new RuyiVersion(0, 47, 0)));
+                            new RuyiVersion(0, 46, 3), new RuyiVersion(0, 49, 0)));
         }
         assertTrue(threw);
     }
