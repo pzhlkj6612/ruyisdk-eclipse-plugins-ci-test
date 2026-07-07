@@ -54,6 +54,23 @@
         </menuContribution>
 
         <menuContribution
+            locationURI="menu:project?after=additions">
+            <menu
+                id="org.ruyisdk.venv.menu.projectMenuBar"
+                label="RuyiSDK">
+                <command
+                    commandId="org.ruyisdk.venv.commands.newProjectVenv"
+                    label="New venv..."/>
+                <command
+                    commandId="org.ruyisdk.venv.commands.applyProjectVenv"
+                    label="Apply venv..."/>
+                <command
+                    commandId="org.ruyisdk.venv.commands.deleteProjectVenv"
+                    label="Delete venv..."/>
+            </menu>
+        </menuContribution>
+
+        <menuContribution
             locationURI="popup:org.eclipse.ui.popup.any?after=additions">
             <menu
                 id="org.ruyisdk.venv.menu.projectContext"
