@@ -9,9 +9,11 @@ public class Toolchain {
     private String name;
     private List<String> versions = new ArrayList<>();
     private List<String> quirks = new ArrayList<>();
+    private boolean hasIncludedSysroot;
 
-    /** Creates a toolchain with the given versions and quirks. */
-    public Toolchain(String name, List<String> versions, List<String> quirks) {
+    /** Creates a toolchain with the given versions, quirks, and sysroot capability. */
+    public Toolchain(String name, List<String> versions, List<String> quirks,
+            boolean hasIncludedSysroot) {
         this.name = name;
         if (versions != null) {
             this.versions.addAll(versions);
@@ -19,6 +21,7 @@ public class Toolchain {
         if (quirks != null) {
             this.quirks.addAll(quirks);
         }
+        this.hasIncludedSysroot = hasIncludedSysroot;
     }
 
     /** Returns the toolchain name. */
@@ -55,5 +58,15 @@ public class Toolchain {
         if (quirks != null) {
             this.quirks.addAll(quirks);
         }
+    }
+
+    /** Returns whether this toolchain provides an included sysroot. */
+    public boolean hasIncludedSysroot() {
+        return hasIncludedSysroot;
+    }
+
+    /** Sets whether this toolchain provides an included sysroot. */
+    public void setHasIncludedSysroot(boolean hasIncludedSysroot) {
+        this.hasIncludedSysroot = hasIncludedSysroot;
     }
 }

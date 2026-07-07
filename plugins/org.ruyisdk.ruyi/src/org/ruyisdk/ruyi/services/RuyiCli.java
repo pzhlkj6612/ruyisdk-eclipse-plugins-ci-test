@@ -48,6 +48,8 @@ public class RuyiCli {
         // "flavors" is the old name for "quirks":
         // https://github.com/ruyisdk/ruyi/blob/ff18bb37e092d875e04ddcb3320c79798c4b2315/ruyi/ruyipkg/pkg_manifest.py#L88-L109
         private final List<String> quirks;
+        // "toolchain.included_sysroot"
+        private final boolean hasIncludedSysroot;
 
         /**
          * Creates an instance.
@@ -55,11 +57,14 @@ public class RuyiCli {
          * @param name toolchain package name
          * @param versions available toolchain versions
          * @param quirks quirk (flavor) identifiers provided by this toolchain
+         * @param hasIncludedSysroot true if this toolchain metadata declares an included sysroot
          */
-        public ToolchainInfo(String name, List<String> versions, List<String> quirks) {
+        public ToolchainInfo(String name, List<String> versions, List<String> quirks,
+                boolean hasIncludedSysroot) {
             this.name = name;
             this.versions = versions == null ? new ArrayList<>() : new ArrayList<>(versions);
             this.quirks = quirks == null ? new ArrayList<>() : new ArrayList<>(quirks);
+            this.hasIncludedSysroot = hasIncludedSysroot;
         }
 
         public String getName() {
@@ -72,6 +77,11 @@ public class RuyiCli {
 
         public List<String> getQuirks() {
             return Collections.unmodifiableList(quirks);
+        }
+
+        /** Returns whether this toolchain metadata declares an included sysroot. */
+        public boolean hasIncludedSysroot() {
+            return hasIncludedSysroot;
         }
     }
 

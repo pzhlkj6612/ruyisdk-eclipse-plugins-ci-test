@@ -132,11 +132,12 @@ public class VenvWizardViewModel {
     }
 
     private boolean isSysrootPackageSelected() {
+        final var sysrootToolchains = getSysrootToolchains();
         if (!(selectedSysrootPackageIndex >= 0
-                && selectedSysrootPackageIndex < toolchains.size())) {
+                && selectedSysrootPackageIndex < sysrootToolchains.size())) {
             return false;
         }
-        final var versions = toolchains.get(selectedSysrootPackageIndex).getVersions();
+        final var versions = sysrootToolchains.get(selectedSysrootPackageIndex).getVersions();
         return versions != null && selectedSysrootPackageVersionIndex >= 0
                 && selectedSysrootPackageVersionIndex < versions.size();
     }
@@ -182,7 +183,7 @@ public class VenvWizardViewModel {
 
         sb.append("Sysroot: ");
         if (sysrootOption == SysrootOption.FOREIGN_TOOLCHAIN && isSysrootPackageSelected()) {
-            final var pkg = toolchains.get(selectedSysrootPackageIndex);
+            final var pkg = getSysrootToolchains().get(selectedSysrootPackageIndex);
             final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
             sb.append(String.format("copy from %s(%s)", pkg.getName(), ver));
         } else {
@@ -208,8 +209,9 @@ public class VenvWizardViewModel {
         final var toolchainInfos = service.listToolchains();
         if (toolchainInfos != null) {
             for (final var toolchainInfo : toolchainInfos) {
-                allToolchains.add(new Toolchain(toolchainInfo.getName(),
-                        toolchainInfo.getVersions(), toolchainInfo.getQuirks()));
+                allToolchains
+                        .add(new Toolchain(toolchainInfo.getName(), toolchainInfo.getVersions(),
+                                toolchainInfo.getQuirks(), toolchainInfo.hasIncludedSysroot()));
             }
         }
 
@@ -318,13 +320,15 @@ public class VenvWizardViewModel {
         if (sysrootOption != SysrootOption.FOREIGN_TOOLCHAIN) {
             throw RuyiCliException.invalidArgument("No need to install package for sysroot");
         }
-        if (selectedSysrootPackageIndex < 0 || selectedSysrootPackageIndex >= toolchains.size()
+        final var sysrootToolchains = getSysrootToolchains();
+        if (selectedSysrootPackageIndex < 0
+                || selectedSysrootPackageIndex >= sysrootToolchains.size()
                 || selectedSysrootPackageVersionIndex < 0) {
             throw RuyiCliException.invalidArgument("Sysroot enabled but not selected");
         }
-        final var name = toolchains.get(selectedSysrootPackageIndex).getName();
-        final var version = toolchains.get(selectedSysrootPackageIndex).getVersions()
-                .get(selectedSysrootPackageVersionIndex);
+        final var pkg = sysrootToolchains.get(selectedSysrootPackageIndex);
+        final var name = pkg.getName();
+        final var version = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
         installPackageForSysroot(name, version);
     }
 
@@ -370,7 +374,7 @@ public class VenvWizardViewModel {
                 throw RuyiCliException
                         .invalidArgument("Sysroot from package selected but no package chosen");
             }
-            final var pkg = toolchains.get(selectedSysrootPackageIndex);
+            final var pkg = getSysrootToolchains().get(selectedSysrootPackageIndex);
             final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
             sysrootFromAtom = String.format("%s(%s)", pkg.getName(), ver);
         }
@@ -550,6 +554,10 @@ public class VenvWizardViewModel {
 
     /** Sets the selected sysroot package index within the toolchains list. */
     public void setSelectedSysrootPackageIndex(int index) {
+        final var sysrootToolchains = getSysrootToolchains();
+        if (index < -1 || index >= sysrootToolchains.size()) {
+            index = -1;
+        }
         final var old = this.selectedSysrootPackageIndex;
         this.selectedSysrootPackageIndex = index;
         pcs.firePropertyChange("selectedSysrootPackageIndex", old,
@@ -584,13 +592,18 @@ public class VenvWizardViewModel {
     private void updateSysrootPackageDisplayText() {
         final var old = this.sysrootPackageDisplayText;
         if (isSysrootPackageSelected()) {
-            final var pkg = toolchains.get(selectedSysrootPackageIndex);
+            final var pkg = getSysrootToolchains().get(selectedSysrootPackageIndex);
             final var ver = pkg.getVersions().get(selectedSysrootPackageVersionIndex);
             this.sysrootPackageDisplayText = String.format("%s(%s)", pkg.getName(), ver);
         } else {
             this.sysrootPackageDisplayText = "";
         }
         pcs.firePropertyChange("sysrootPackageDisplayText", old, this.sysrootPackageDisplayText);
+    }
+
+    /** Returns toolchains that can act as sysroot sources. */
+    public List<Toolchain> getSysrootToolchains() {
+        return toolchains.stream().filter(Toolchain::hasIncludedSysroot).toList();
     }
 
     /** Returns the configured venv parent directory. */
