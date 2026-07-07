@@ -8,7 +8,7 @@ import org.ruyisdk.core.ruyi.model.RuyiVersion;
  * {@link RuyiCli} or {@link RuyiCliRequest}, but {@link RuyiCliExecutor}.
  */
 public final class RuyiCliVersionSupport {
-    private static final RuyiVersion MIN_SUPPORTED_VERSION = new RuyiVersion(0, 47, 0);
+    private static final RuyiVersion MIN_SUPPORTED_VERSION = new RuyiVersion(0, 49, 0);
     private static final Pattern VERSION_PATTERN =
             Pattern.compile("(?m)^Ruyi\\s+(\\d+\\.\\d+\\.\\d+)\\b");
 
@@ -52,7 +52,7 @@ public final class RuyiCliVersionSupport {
      * Checks whether a parsed ruyi version is supported by this plugin.
      *
      * @param version parsed installed version
-     * @return true when version is 0.47.0 or newer, false otherwise
+     * @return true when version is {@link #MIN_SUPPORTED_VERSION} or newer, false otherwise
      */
     public static boolean isSupportedVersion(RuyiVersion version) {
         return version != null && version.compareTo(MIN_SUPPORTED_VERSION) >= 0;
@@ -68,7 +68,7 @@ public final class RuyiCliVersionSupport {
     }
 
     /**
-     * Validates that a parsed ruyi version is 0.47.0 or newer.
+     * Validates that a parsed ruyi version is {@link #MIN_SUPPORTED_VERSION} or newer.
      *
      * @param version parsed installed version
      * @throws RuyiCliException when version is unsupported

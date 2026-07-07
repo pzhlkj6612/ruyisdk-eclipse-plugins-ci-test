@@ -757,11 +757,18 @@ public class RuyiCli {
      * @param profile profile name (required)
      * @param withSysroot whether to use the included sysroot (may be null)
      * @param sysrootFrom optional toolchain for {@code --sysroot-from} (may be null)
+     * @param copySysrootFromDir optional source directory for {@code --copy-sysroot-from-dir} (may
+     *        be null)
+     * @param symlinkSysrootFromDir optional source directory for {@code --symlink-sysroot-from-dir}
+     *        (may be null)
+     * @param projectSysrootFromRootfs optional rootfs directory for
+     *        {@code --project-sysroot-from-rootfs} (may be null)
      * @param emulatorName optional emulator package name (may be null)
      * @param emulatorVersion optional emulator version (may be null)
      */
     public static void createVenv(String path, String toolchainName, String toolchainVersion,
-            String profile, Boolean withSysroot, String sysrootFrom, String emulatorName,
+            String profile, Boolean withSysroot, String sysrootFrom, String copySysrootFromDir,
+            String symlinkSysrootFromDir, String projectSysrootFromRootfs, String emulatorName,
             String emulatorVersion) {
         if (path == null || path.isBlank()) {
             throw RuyiCliException.invalidArgument("Empty venv path");
@@ -782,8 +789,10 @@ public class RuyiCli {
         }
         final var request = RuyiCliRequest.builder().ruyiInstallDir(requireInstallPathResult())
                 .porcelain(true).venv().profile(profile).dest(path).toolchain(toolchainAtom)
-                .sysrootFrom(sysrootFrom).withSysroot(withSysroot).emulator(emulatorAtom).end()
-                .build();
+                .sysrootFrom(sysrootFrom).copySysrootFromDir(copySysrootFromDir)
+                .symlinkSysrootFromDir(symlinkSysrootFromDir)
+                .projectSysrootFromRootfs(projectSysrootFromRootfs).withSysroot(withSysroot)
+                .emulator(emulatorAtom).end().build();
         request.execute();
     }
 

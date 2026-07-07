@@ -22,11 +22,13 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.swt.widgets.Text;
 import org.ruyisdk.ruyi.services.PackageIndexUpdater;
 import org.ruyisdk.venv.model.Emulator;
 import org.ruyisdk.venv.model.Profile;
@@ -59,7 +61,12 @@ public class WizardConfigPage extends WizardPage {
     private Button sysrootDefaultRadio;
     private Button sysrootNoneRadio;
     private Button sysrootForeignRadio;
+    private Button sysrootCopyFromDirectoryRadio;
+    private Button sysrootSymlinkFromDirectoryRadio;
+    private Button sysrootProjectFromRootfsRadio;
     private Link sysrootPackageLink;
+    private Text sysrootDirectoryText;
+    private Button sysrootDirectoryBrowseButton;
 
     WizardConfigPage(VenvWizardViewModel viewModel) {
         super("configurationPage");
@@ -371,7 +378,7 @@ public class WizardConfigPage extends WizardPage {
         // sysroot
         {
             sysrootDefaultRadio = new Button(sysrootGroup, SWT.RADIO);
-            sysrootDefaultRadio.setText("Using included sysroot");
+            sysrootDefaultRadio.setText("Include sysroot from selected toolchain");
             {
                 final var gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
                 gridData.horizontalSpan = 2;
@@ -379,7 +386,7 @@ public class WizardConfigPage extends WizardPage {
             }
 
             sysrootNoneRadio = new Button(sysrootGroup, SWT.RADIO);
-            sysrootNoneRadio.setText("None sysroot (only for advanced users)");
+            sysrootNoneRadio.setText("Do not include sysroot");
             {
                 final var gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
                 gridData.horizontalSpan = 2;
@@ -387,7 +394,7 @@ public class WizardConfigPage extends WizardPage {
             }
 
             sysrootForeignRadio = new Button(sysrootGroup, SWT.RADIO);
-            sysrootForeignRadio.setText("Use sysroot from specified package:");
+            sysrootForeignRadio.setText("Copy sysroot from specified package:");
             sysrootForeignRadio.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 
             sysrootPackageLink = new Link(sysrootGroup, SWT.NONE);
@@ -398,6 +405,57 @@ public class WizardConfigPage extends WizardPage {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     openSysrootPackageDialog();
+                }
+            });
+
+            sysrootCopyFromDirectoryRadio = new Button(sysrootGroup, SWT.RADIO);
+            sysrootCopyFromDirectoryRadio.setText("Copy sysroot from directory");
+            {
+                final var gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+                gridData.horizontalSpan = 2;
+                sysrootCopyFromDirectoryRadio.setLayoutData(gridData);
+            }
+
+            sysrootSymlinkFromDirectoryRadio = new Button(sysrootGroup, SWT.RADIO);
+            sysrootSymlinkFromDirectoryRadio.setText("Symlink sysroot from directory");
+            {
+                final var gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+                gridData.horizontalSpan = 2;
+                sysrootSymlinkFromDirectoryRadio.setLayoutData(gridData);
+            }
+
+            sysrootProjectFromRootfsRadio = new Button(sysrootGroup, SWT.RADIO);
+            sysrootProjectFromRootfsRadio.setText("Project sysroot from rootfs directory");
+            {
+                final var gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+                gridData.horizontalSpan = 2;
+                sysrootProjectFromRootfsRadio.setLayoutData(gridData);
+            }
+
+            final var sysrootPathComposite = new Composite(sysrootGroup, SWT.NONE);
+            {
+                final var gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+                gridData.horizontalSpan = 2;
+                sysrootPathComposite.setLayoutData(gridData);
+            }
+            {
+                final var gridLayout = new GridLayout(2, false);
+                gridLayout.marginWidth = 0;
+                sysrootPathComposite.setLayout(gridLayout);
+            }
+
+            sysrootDirectoryText = new Text(sysrootPathComposite, SWT.BORDER);
+            sysrootDirectoryText.setMessage("Select source directory path");
+            sysrootDirectoryText.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+            sysrootDirectoryText.setEnabled(false);
+
+            sysrootDirectoryBrowseButton = new Button(sysrootPathComposite, SWT.PUSH);
+            sysrootDirectoryBrowseButton.setText("Browse...");
+            sysrootDirectoryBrowseButton.setEnabled(false);
+            sysrootDirectoryBrowseButton.addSelectionListener(new SelectionAdapter() {
+                @Override
+                public void widgetSelected(SelectionEvent e) {
+                    openSysrootDirectoryDialog();
                 }
             });
         }
@@ -644,19 +702,39 @@ public class WizardConfigPage extends WizardPage {
                         WidgetProperties.buttonSelection().observe(sysrootNoneRadio));
                 sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.FOREIGN_TOOLCHAIN,
                         WidgetProperties.buttonSelection().observe(sysrootForeignRadio));
+                sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.COPY_FROM_DIRECTORY,
+                        WidgetProperties.buttonSelection().observe(sysrootCopyFromDirectoryRadio));
+                sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.SYMLINK_FROM_DIRECTORY,
+                        WidgetProperties.buttonSelection()
+                                .observe(sysrootSymlinkFromDirectoryRadio));
+                sysrootSelection.addOption(VenvWizardViewModel.SysrootOption.PROJECT_FROM_ROOTFS,
+                        WidgetProperties.buttonSelection().observe(sysrootProjectFromRootfsRadio));
             }
             final var sysrootOptionObservable = BeanProperties.value(VenvWizardViewModel.class,
                     "sysrootOption", VenvWizardViewModel.SysrootOption.class).observe(viewModel);
             final var displayTextObservable = BeanProperties
                     .value(VenvWizardViewModel.class, "sysrootPackageDisplayText", String.class)
                     .observe(viewModel);
+            final var sysrootDirectoryObservable = BeanProperties
+                    .value(VenvWizardViewModel.class, "sysrootDirectoryPath", String.class)
+                    .observe(viewModel);
 
             dbc.bindValue(sysrootSelection, sysrootOptionObservable);
+            dbc.bindValue(WidgetProperties.text(SWT.Modify).observe(sysrootDirectoryText),
+                    sysrootDirectoryObservable);
 
             sysrootOptionObservable.addValueChangeListener(e -> {
                 final var fromPkg = viewModel
                         .getSysrootOption() == VenvWizardViewModel.SysrootOption.FOREIGN_TOOLCHAIN;
+                final var fromDirectory = switch (viewModel.getSysrootOption()) {
+                    case VenvWizardViewModel.SysrootOption.COPY_FROM_DIRECTORY -> true;
+                    case VenvWizardViewModel.SysrootOption.SYMLINK_FROM_DIRECTORY -> true;
+                    case VenvWizardViewModel.SysrootOption.PROJECT_FROM_ROOTFS -> true;
+                    default -> false;
+                };
                 sysrootPackageLink.setEnabled(fromPkg);
+                sysrootDirectoryText.setEnabled(fromDirectory);
+                sysrootDirectoryBrowseButton.setEnabled(fromDirectory);
             });
 
             displayTextObservable.addValueChangeListener(e -> {
@@ -686,6 +764,20 @@ public class WizardConfigPage extends WizardPage {
     private void openSysrootPackageDialog() {
         final var dialog = new SysrootPackageSelectionDialog(getShell(), viewModel);
         dialog.open();
+    }
+
+    private void openSysrootDirectoryDialog() {
+        final var dialog = new DirectoryDialog(getShell());
+        dialog.setText("Select sysroot source directory");
+        dialog.setMessage("Choose a source directory for sysroot provisioning.");
+        final var currentPath = viewModel.getSysrootDirectoryPath();
+        if (currentPath != null && !currentPath.isBlank()) {
+            dialog.setFilterPath(currentPath);
+        }
+        final var selectedPath = dialog.open();
+        if (selectedPath != null) {
+            viewModel.setSysrootDirectoryPath(selectedPath);
+        }
     }
 
     private void performUpdateAndRefresh() {
