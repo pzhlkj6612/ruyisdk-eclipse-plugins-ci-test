@@ -381,7 +381,6 @@ jobs:
           make_latest: false
           prerelease: true
           generate_release_notes: true
-          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_continuous.md
           files: |
             ${{ env.OUTPUT_FILE_NAME }}
