@@ -58,13 +58,14 @@ jobs:
       # e.g. "ruyisdk-eclipse-plugins-0.1.0.zip". no "v" prefixes.
       RELEASED_FILE_NAME_TEMPLATE: "ruyisdk-eclipse-plugins-%VERSION_NUMBER%.zip"
     outputs:
-      datetime: ${{ steps.info_extraction.outputs.datetime }}
-      release_type: ${{ steps.info_extraction.outputs.release_type }}
-      version_number: ${{ steps.info_extraction.outputs.ver_num }}
-      released_file_name: ${{ steps.info_extraction.outputs.ver_file_name }}
+      datetime: ${{ steps.input_check.outputs.datetime }}
+      release_type: ${{ steps.input_check.outputs.release_type }}
+      version_number: ${{ steps.input_check.outputs.ver_num }}
+      released_file_name: ${{ steps.input_check.outputs.ver_file_name }}
+      latest_final_ver: ${{ steps.version_check.outputs.latest_final_ver }}
     steps:
       - name: Extract information
-        id: info_extraction
+        id: input_check
         shell: python
         env:
           GITHUB_REF_TYPE: ${{ github.ref_type }}
@@ -118,13 +119,13 @@ jobs:
                   f.write(f"{key}={value}\n")
 
       - name: Checkout to Prepare the Environment for GitHub CLI
-        if: ${{ steps.info_extraction.outputs.release_type == 'beta' || steps.info_extraction.outputs.release_type == 'final' }}
+        if: ${{ steps.input_check.outputs.release_type == 'beta' || steps.input_check.outputs.release_type == 'final' }}
         uses: actions/checkout@v6.0.1
         with:
           fetch-depth: 1
 
       - name: Set up JDK 21
-        if: ${{ steps.info_extraction.outputs.release_type == 'beta' || steps.info_extraction.outputs.release_type == 'final' }}
+        if: ${{ steps.input_check.outputs.release_type == 'beta' || steps.input_check.outputs.release_type == 'final' }}
         uses: actions/setup-java@v5.2.0
         with:
           distribution: 'temurin'
@@ -132,12 +133,13 @@ jobs:
           cache: 'maven'
 
       - name: Make sure version number matches POM and all version numbers should be monotonic.
-        if: ${{ steps.info_extraction.outputs.release_type == 'beta' || steps.info_extraction.outputs.release_type == 'final' }}
+        id: version_check
+        if: ${{ steps.input_check.outputs.release_type == 'beta' || steps.input_check.outputs.release_type == 'final' }}
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION_NUMBER: ${{ steps.info_extraction.outputs.ver_num }}
-          RELEASE_TYPE: ${{ steps.info_extraction.outputs.release_type }}
+          VERSION_NUMBER: ${{ steps.input_check.outputs.ver_num }}
+          RELEASE_TYPE: ${{ steps.input_check.outputs.release_type }}
         run: |
           import json
           import os
@@ -229,6 +231,29 @@ jobs:
                   "::error:: Version "
                   f"'{ver_num}' is not newer than the latest published version '{remote_latest_ver}'."
               )
+
+          # the latest final release.
+          final_release_list_raw = run([
+              "gh",
+              "release",
+              "list",
+              "--json",
+              "tagName",
+              "--exclude-drafts",
+              "--exclude-pre-releases",
+          ]).stdout
+          final_release_list = json.loads(final_release_list_raw)
+          print(f"Found remote final versions '{final_release_list}'")
+          latest_final_ver = max(
+              [semver_tuple(release.get("tagName", "")) for release in final_release_list],
+              default=None,
+          )
+          if latest_final_ver is None:
+              print("No latest remote final version found")
+          else:
+              print(f"Found latest remote final version '{latest_final_ver}'")
+              with open(github_output_file, "a", encoding="utf-8") as f:
+                  f.write(f"latest_final_ver={latest_final_ver}\n")
 
   build_and_upload:
     name: Build and Upload
@@ -348,7 +373,7 @@ jobs:
 
       - name: Publish a Continuous Release
         if: ${{ needs.config_and_check.outputs.release_type == 'continuous' }}
-        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090  # v2.4.1
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           name: Continuous
           tag_name: continuous
@@ -356,6 +381,7 @@ jobs:
           make_latest: false
           prerelease: true
           generate_release_notes: true
+          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_continuous.md
           files: |
             ${{ env.OUTPUT_FILE_NAME }}
@@ -369,7 +395,7 @@ jobs:
 
       - name: Publish a Beta Release
         if: ${{ needs.config_and_check.outputs.release_type == 'beta' }}
-        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090  # v2.4.1
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           name: ${{ env.VERSION_NUMBER }}
           tag_name: ${{ env.VERSION_NUMBER }}
@@ -377,13 +403,14 @@ jobs:
           make_latest: false
           prerelease: true
           generate_release_notes: true
+          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_beta.md
           files: |
             ${{ env.RELEASED_FILE_NAME }}
 
       - name: Publish a Final Release
         if: ${{ needs.config_and_check.outputs.release_type == 'final' }}
-        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090  # v2.4.1
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           name: ${{ env.VERSION_NUMBER }}
           tag_name: ${{ env.VERSION_NUMBER }}
@@ -391,6 +418,7 @@ jobs:
           make_latest: true
           prerelease: false
           generate_release_notes: true
+          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_final.md
           files: |
             ${{ env.RELEASED_FILE_NAME }}
