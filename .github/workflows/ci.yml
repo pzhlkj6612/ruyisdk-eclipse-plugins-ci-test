@@ -20,10 +20,10 @@ env:
 
 jobs:
   workflow_check:
-    name: Workflow Dispatch Sanity Check
+    name: Workflow Sanity Check
     runs-on: ubuntu-latest
     steps:
-      - name: Check if the workflow is triggered on the main branch
+      - name: Check if the manual workflow is triggered on the main branch
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}
@@ -38,10 +38,11 @@ jobs:
   dco:
     name: DCO Compliance
     needs: workflow_check
-    if: ${{ always() && needs.workflow_check.result != 'failure' }}
     runs-on: ubuntu-latest
     steps:
       - name: Run christophebedard/dco-check
+        # tagging does not produce any commits
+        if: ${{ (github.event_name == 'push' || github.event_name == 'pull_request') && github.ref_type != 'tag' }}
         uses: christophebedard/dco-check@7b0205d25ead0f898e0b706b58227dd5fa7e3f55  # 0.5.0
         with:
           args: "--verbose"
@@ -51,7 +52,6 @@ jobs:
   config_and_check:
     name: Configuration and Check
     needs: workflow_check
-    if: ${{ always() && needs.workflow_check.result != 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     env:
