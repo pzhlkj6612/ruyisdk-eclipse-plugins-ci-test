@@ -114,7 +114,7 @@ jobs:
 
           with open(github_output_file, "a", encoding="utf-8") as f:
               for key, value in outputs.items():
-                  print(f"::info:: Setting output {key}={value}")
+                  print(f"Setting output {key}={value}")
                   f.write(f"{key}={value}\n")
 
       - name: Checkout to Prepare the Environment for GitHub CLI
@@ -190,7 +190,7 @@ jobs:
               "-DforceStdout",
           ]).stdout.strip()
           pom_ver = semver_tuple(pom_ver_raw)
-          print(f"::info:: Found local version '{pom_ver}' from pom.xml with number '{pom_ver_raw}'")
+          print(f"Found local version '{pom_ver}' from pom.xml with number '{pom_ver_raw}'")
 
           # won't be always a full list due to missing "--limit ...",
           #   but newer ones will always be there, so it's enough.
@@ -203,14 +203,14 @@ jobs:
               "--exclude-drafts",
           ]).stdout
           release_list = json.loads(release_list_raw)
-          print(f"::info:: Found remote versions '{release_list}'")
+          print(f"Found remote versions '{release_list}'")
 
           remote_ver_list = []
           for release in release_list:
               tag = release.get("tagName", "")
               try:
                   ver = semver_tuple(tag)
-                  print(f"::info:: Found remote version '{ver}' with tag '{tag}'")
+                  print(f"Found remote version '{ver}' with tag '{tag}'")
                   remote_ver_list.append(ver)
               except ValueError:
                   continue
