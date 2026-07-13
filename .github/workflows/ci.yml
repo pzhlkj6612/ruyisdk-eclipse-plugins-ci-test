@@ -86,10 +86,12 @@ jobs:
           if github_ref_type == "tag" or input_version:
               ver_num = input_version if input_version else github_ref_name
 
-              if re.fullmatch(r"v\d+\.\d+\.\d+-beta\.\d+", ver_num):
-                  release_type = "beta"
-              elif re.fullmatch(r"v\d+\.\d+\.\d+", ver_num):
-                  release_type = "final"
+              m = re.fullmatch(r"v\d+\.\d+\.\d+(-beta\.\d+)?", ver_num)
+              if m:
+                if m.group(1):
+                    release_type = "beta"
+                else:
+                    release_type = "final"
               else:
                   sys.exit(
                       "::error:: Unsupported version number format "
@@ -144,15 +146,19 @@ jobs:
           import sys
           import time
 
-          def run(cmd):
+          def run(cmd: list[str]) -> subprocess.CompletedProcess:
               return subprocess.run(cmd, check=True, text=True, capture_output=True)
 
-          # v0.1.0 -> (0, 1, 0, sys.maxsize), v0.1.0-beta.1 -> (0, 1, 0, 1).
-          def semver_tuple(version):
-              m = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?", version)
+          # 0.1.0-SNAPSHOT -> (0, 1, 0, sys.maxsize);
+          # v0.1.0 -> (0, 1, 0, sys.maxsize);
+          # v0.1.0-beta.1 -> (0, 1, 0, 1).
+          def semver_tuple(version: str) -> tuple[int, int, int, int]:
+              version = version.remove_suffix("-SNAPSHOT")
+              m = re.fullmatch(r"v?(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?", version)
               if not m:
                   raise ValueError(f"invalid semver: {version}")
-              return tuple(int(p) if p is not None else sys.maxsize for p in m.groups())
+              major, minor, micro, beta = m.groups()
+              return tuple(int(x) for x in (major, minor, micro, beta if beta is not None else sys.maxsize))
 
           ver_num_raw = os.environ["VERSION_NUMBER"]
           release_type = os.environ["RELEASE_TYPE"]
@@ -183,7 +189,7 @@ jobs:
               "-q",
               "-DforceStdout",
           ]).stdout.strip()
-          pom_ver = semver_tuple("v" + pom_ver_raw.removesuffix("-SNAPSHOT"))
+          pom_ver = semver_tuple(pom_ver_raw)
           print(f"::info:: Found local version '{pom_ver}' from pom.xml with number '{pom_ver_raw}'")
 
           # won't be always a full list due to missing "--limit ...",
@@ -209,14 +215,14 @@ jobs:
                   continue
           remote_latest_ver = max(remote_ver_list) if remote_ver_list else None
 
-          # matchness.
-          if ver_num != pom_ver:
+          # matchness with dropping beta number.
+          if ver_num[0:3] != pom_ver[0:3]:
               sys.exit(
                   "::error:: Version "
-                  f"'{ver_num}' does not match the version '{pom_ver}' in pom.xml."
+                  f"'{ver_num[0:3]}' does not match the version '{pom_ver[0:3]}' in pom.xml."
               )
 
-          # monotonicity.
+          # uniqueness and monotonicity.
           if remote_latest_ver is not None and ver_num <= remote_latest_ver:
               sys.exit(
                   "::error:: Version "
