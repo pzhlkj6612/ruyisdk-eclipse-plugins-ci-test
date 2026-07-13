@@ -26,8 +26,12 @@
 
 Steps:
 
-- Update embedded version number by running `./mvnw tycho-versions:set-version -DnewVersion=...` and make a commit. The format of a version number should be either `X.Y.Z-beta.N-SNAPSHOT` or `X.Y.Z-SNAPSHOT`. Don't drop the `-SNAPSHOT` suffix.
-- If you're able to push a tag to the "main" branch, just tag the current commit and push the tag.
-- If you have no privilege to do so, use GitHub's infrastructure instead. Make new tags on the "main" branch by creating and immediately deleting a new release in the "Release" page on GitHub Web UI. Don't delete the tag as well. You can also trigger the action in the "Actions" page and manually fire the CI with a valid version number.
+- Update hard-coded version number by running `./mvnw tycho-versions:set-version -DnewVersion=X.Y.Z-SNAPSHOT` and make a commit:
+  - Use tag `X.Y.Z-beta.N` for beta versions.
+  - Use tag `X.Y.Z` for final versions.
+  - Do NOT use `continuous` or any other string as the tag name.
+- Send the tag to GitHub:
+  - If you're able to push a tag to the "main" branch, just tag the current commit and push the tag.
+  - If you have no privilege to do so, use GitHub's infrastructure instead. Make new tags on the "main" branch by creating and immediately deleting a new release in the "Release" page on GitHub Web UI. Don't delete the tag as well. You can also trigger the action in the "Actions" page and manually fire the CI with a valid version number.
 
 All version numbers are monotonic. Keep moving forward.
