@@ -46,7 +46,7 @@ If you have any questions:
 <details open>
 <summary>中文</summary>
 
-这不是最终版本，而是通过持续集成环境构建出来的 Beta 版本。
+这不是最终版本，而是通过持续集成环境构建出来的测试版本。
 
 ## 环境要求
 

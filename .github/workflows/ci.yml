@@ -203,10 +203,11 @@ jobs:
               "--exclude-drafts",
           ]).stdout
           release_list = json.loads(release_list_raw)
+          print(f"::info:: Found remote versions '{release_list}'")
 
           remote_ver_list = []
-          for item in release_list:
-              tag = item.get("tagName", "")
+          for release in release_list:
+              tag = release.get("tagName", "")
               try:
                   ver = semver_tuple(tag)
                   print(f"::info:: Found remote version '{ver}' with tag '{tag}'")
