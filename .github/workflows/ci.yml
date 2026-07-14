@@ -62,7 +62,7 @@ jobs:
       release_type: ${{ steps.input_check.outputs.release_type }}
       version_number: ${{ steps.input_check.outputs.ver_num }}
       released_file_name: ${{ steps.input_check.outputs.ver_file_name }}
-      remote_latest_final_ver: ${{ steps.version_check.outputs.remote_latest_final_ver }}
+      latest_final_ver: ${{ steps.version_check.outputs.latest_final_ver }}
     steps:
       - name: Extract information
         id: input_check
@@ -203,9 +203,10 @@ jobs:
           if remote_latest_final_ver is None:
               print("No latest remote final version found")
           else:
+              print(f"Found latest remote final version '{remote_latest_final_ver}'")
+              latest_final_ver = 'v%s.%s.%s' % remote_latest_final_ver[0:3]
               with open(github_output_file, "a", encoding="utf-8") as f:
-                  print(f"Found latest remote final version '{remote_latest_final_ver}'")
-                  f.write(f"remote_latest_final_ver={remote_latest_final_ver}\n")
+                  f.write(f"latest_final_ver={latest_final_ver}\n")
 
           if release_type == "continuous":
               print("Continuous release, no further version number check is needed, exiting...")
@@ -387,7 +388,7 @@ jobs:
           make_latest: false
           prerelease: true
           generate_release_notes: true
-          previous_tag: ${{ needs.config_and_check.outputs.remote_latest_final_ver }}
+          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_continuous.md
           files: |
             ${{ env.OUTPUT_FILE_NAME }}
@@ -409,7 +410,7 @@ jobs:
           make_latest: false
           prerelease: true
           generate_release_notes: true
-          previous_tag: ${{ needs.config_and_check.outputs.remote_latest_final_ver }}
+          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_beta.md
           files: |
             ${{ env.RELEASED_FILE_NAME }}
@@ -424,7 +425,7 @@ jobs:
           make_latest: true
           prerelease: false
           generate_release_notes: true
-          previous_tag: ${{ needs.config_and_check.outputs.remote_latest_final_ver }}
+          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_final.md
           files: |
             ${{ env.RELEASED_FILE_NAME }}
