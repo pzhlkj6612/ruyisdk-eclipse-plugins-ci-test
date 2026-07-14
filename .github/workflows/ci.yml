@@ -62,7 +62,7 @@ jobs:
       release_type: ${{ steps.input_check.outputs.release_type }}
       version_number: ${{ steps.input_check.outputs.ver_num }}
       released_file_name: ${{ steps.input_check.outputs.ver_file_name }}
-      latest_final_ver: ${{ steps.version_check.outputs.latest_final_ver }}
+      remote_latest_final_ver: ${{ steps.version_check.outputs.remote_latest_final_ver }}
     steps:
       - name: Extract information
         id: input_check
@@ -119,13 +119,13 @@ jobs:
                   f.write(f"{key}={value}\n")
 
       - name: Checkout to Prepare the Environment for GitHub CLI
-        if: ${{ steps.input_check.outputs.release_type == 'beta' || steps.input_check.outputs.release_type == 'final' }}
+        if: ${{ steps.input_check.outputs.release_type != 'none' }}
         uses: actions/checkout@v6.0.1
         with:
           fetch-depth: 1
 
       - name: Set up JDK 21
-        if: ${{ steps.input_check.outputs.release_type == 'beta' || steps.input_check.outputs.release_type == 'final' }}
+        if: ${{ steps.input_check.outputs.release_type != 'none' }}
         uses: actions/setup-java@v5.2.0
         with:
           distribution: 'temurin'
@@ -134,7 +134,7 @@ jobs:
 
       - name: Make sure version number matches POM and all version numbers should be monotonic.
         id: version_check
-        if: ${{ steps.input_check.outputs.release_type == 'beta' || steps.input_check.outputs.release_type == 'final' }}
+        if: ${{ steps.input_check.outputs.release_type != 'none' }}
         shell: python
         env:
           GH_TOKEN: ${{ github.token }}
@@ -165,22 +165,50 @@ jobs:
           ver_num_raw = os.environ["VERSION_NUMBER"]
           release_type = os.environ["RELEASE_TYPE"]
 
-          print(
-              "::notice:: Now, remove the existing release of the tag "
-              f"'{ver_num_raw}' if this workflow run is triggered by creating releases on GitHub Web UI."
-          )
+          if release_type in ("beta", "final"):
+            print(
+                "::notice:: Now, remove the existing release of the tag "
+                f"'{ver_num_raw}' if this workflow run is triggered by creating releases on GitHub Web UI."
+            )
 
-          # will be killed if the job times out.
-          while True:
-              exists = subprocess.run(
-                  ["gh", "release", "view", ver_num_raw],
-                  text=True,
-                  capture_output=True,
-              ).returncode == 0
-              if not exists:
-                  break
-              print(f"::notice::   the release '{ver_num_raw}' is still there")
-              time.sleep(5)
+            # will be killed if the job times out.
+            while True:
+                exists = subprocess.run(
+                    ["gh", "release", "view", ver_num_raw],
+                    text=True,
+                    capture_output=True,
+                ).returncode == 0
+                if not exists:
+                    break
+                print(f"::notice::   the release '{ver_num_raw}' is still there")
+                time.sleep(5)
+
+          # the latest final release.
+          final_release_list_raw = run([
+              "gh",
+              "release",
+              "list",
+              "--json",
+              "tagName",
+              "--exclude-drafts",
+              "--exclude-pre-releases",
+          ]).stdout
+          final_release_list = json.loads(final_release_list_raw)
+          print(f"Found remote final versions '{final_release_list}'")
+          remote_latest_final_ver = max(
+              [semver_tuple(release.get("tagName", "")) for release in final_release_list],
+              default=None,
+          )
+          if remote_latest_final_ver is None:
+              print("No latest remote final version found")
+          else:
+              with open(github_output_file, "a", encoding="utf-8") as f:
+                  print(f"Found latest remote final version '{remote_latest_final_ver}'")
+                  f.write(f"remote_latest_final_ver={remote_latest_final_ver}\n")
+
+          if release_type == "continuous":
+              print("Continuous release, no further version number check is needed, exiting...")
+              sys.exit(0)
 
           ver_num = semver_tuple(ver_num_raw)
 
@@ -231,29 +259,6 @@ jobs:
                   "::error:: Version "
                   f"'{ver_num}' is not newer than the latest published version '{remote_latest_ver}'."
               )
-
-          # the latest final release.
-          final_release_list_raw = run([
-              "gh",
-              "release",
-              "list",
-              "--json",
-              "tagName",
-              "--exclude-drafts",
-              "--exclude-pre-releases",
-          ]).stdout
-          final_release_list = json.loads(final_release_list_raw)
-          print(f"Found remote final versions '{final_release_list}'")
-          latest_final_ver = max(
-              [semver_tuple(release.get("tagName", "")) for release in final_release_list],
-              default=None,
-          )
-          if latest_final_ver is None:
-              print("No latest remote final version found")
-          else:
-              print(f"Found latest remote final version '{latest_final_ver}'")
-              with open(github_output_file, "a", encoding="utf-8") as f:
-                  f.write(f"latest_final_ver={latest_final_ver}\n")
 
   build_and_upload:
     name: Build and Upload
@@ -381,6 +386,7 @@ jobs:
           make_latest: false
           prerelease: true
           generate_release_notes: true
+          previous_tag: ${{ needs.config_and_check.outputs.remote_latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_continuous.md
           files: |
             ${{ env.OUTPUT_FILE_NAME }}
@@ -402,7 +408,7 @@ jobs:
           make_latest: false
           prerelease: true
           generate_release_notes: true
-          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
+          previous_tag: ${{ needs.config_and_check.outputs.remote_latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_beta.md
           files: |
             ${{ env.RELEASED_FILE_NAME }}
@@ -417,7 +423,7 @@ jobs:
           make_latest: true
           prerelease: false
           generate_release_notes: true
-          previous_tag: ${{ needs.config_and_check.outputs.latest_final_ver }}
+          previous_tag: ${{ needs.config_and_check.outputs.remote_latest_final_ver }}
           body_path: ${{ github.workspace }}/.github/resources/release/release_note_final.md
           files: |
             ${{ env.RELEASED_FILE_NAME }}
