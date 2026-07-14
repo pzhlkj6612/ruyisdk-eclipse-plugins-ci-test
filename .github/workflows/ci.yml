@@ -203,8 +203,8 @@ jobs:
           if remote_latest_final_ver is None:
               print("No latest remote final version found")
           else:
-              print(f"Found latest remote final version '{remote_latest_final_ver}'")
               latest_final_ver = 'v%s.%s.%s' % remote_latest_final_ver[0:3]
+              print(f"Found latest remote final version '{latest_final_ver}' from '{remote_latest_final_ver}'")
               with open(github_output_file, "a", encoding="utf-8") as f:
                   f.write(f"latest_final_ver={latest_final_ver}\n")
 
