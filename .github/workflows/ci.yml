@@ -164,6 +164,7 @@ jobs:
 
           ver_num_raw = os.environ["VERSION_NUMBER"]
           release_type = os.environ["RELEASE_TYPE"]
+          github_output_file = os.environ["GITHUB_OUTPUT"]
 
           if release_type in ("beta", "final"):
             print(
