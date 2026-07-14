@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: RuyiSDK Plugin - Ruyi
 Bundle-SymbolicName: org.ruyisdk.ruyi;singleton:=true
-Bundle-Version: 0.99.999.qualifier
+Bundle-Version: 0.8765499.999.qualifier
 Bundle-Vendor: ISCAS
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Automatic-Module-Name: org.ruyisdk.ruyi
